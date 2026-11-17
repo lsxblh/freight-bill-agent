@@ -30,7 +30,11 @@ class BillingState(TypedDict, total=False):
         charge_error: 当前费用装配失败的错误描述。
         records: 已落账的输出记录。
         assessments: 已落账记录的完整处理结论。
-        failures: 本文件的失败条目（ingest/extract/assemble 三级）。
+        failures: 本文件的失败条目（ingest/extract/assemble/gate 四级）。
+        gate_passed: 软失败闸门是否放行（gate 节点写入）。
+        gate_reason: 闸门最近一次不放行的原因（补救反馈 / PENDING_REVIEW）。
+        retries: 解析补救已换路重试的次数（0=未补救；条件边据此把关 ≤2）。
+        repair_strategy: 本轮补救策略（ocr/reextract），回到 ingest 时消费。
     """
 
     path: Path
@@ -44,6 +48,10 @@ class BillingState(TypedDict, total=False):
     records: list[OutputRecord]
     assessments: list[RecordAssessment]
     failures: list[dict[str, Any]]
+    gate_passed: bool
+    gate_reason: str | None
+    retries: int
+    repair_strategy: str | None
 
 
 __all__ = ["BillingState"]

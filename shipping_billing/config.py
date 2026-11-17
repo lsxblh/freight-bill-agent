@@ -93,6 +93,15 @@ class Settings:
     llm_max_retries: int = 2
     llm_timeout: float = 60.0
 
+    # ---------- 软失败闸门 / 解析补救（票03） ----------
+    #: 闸门 OCR 置信度下限：低于此值判软失败（文本层/无 OCR 时不受此限）
+    gate_min_confidence: float = 0.5
+    #: 解析补救换路重试上限（0=不补救；条件边据此把关）
+    ingest_max_retries: int = 2
+    #: 独立小模型裁判开关（复用 LLM 端点/key，模型由 JUDGE_MODEL 独立指定）
+    judge_enabled: bool = False
+    judge_model: str = ""
+
     # ---------- 业务 ----------
     #: 当前记账主体（我司）。AR/AP 判定必须以它为中心。
     accounting_entity: str = "NEPTUNE SHIPPING LIMITED"
@@ -156,6 +165,10 @@ class Settings:
             llm_base_url=_env("LLM_BASE_URL", "https://api.deepseek.com/v1")
             or "https://api.deepseek.com/v1",
             llm_api_key=_env("LLM_API_KEY") or _env("DEEPSEEK_API_KEY") or _env("OPENAI_API_KEY"),
+            gate_min_confidence=_env_float("GATE_MIN_CONFIDENCE", 0.5),
+            ingest_max_retries=_env_int("INGEST_MAX_RETRIES", 2),
+            judge_enabled=_env_bool("JUDGE_ENABLED", bool(_env("JUDGE_MODEL"))),
+            judge_model=_env("JUDGE_MODEL", "") or "",
             accounting_entity=_env(
                 "ACCOUNTING_ENTITY", "NEPTUNE SHIPPING LIMITED"
             )
