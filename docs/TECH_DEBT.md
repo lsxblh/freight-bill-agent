@@ -92,3 +92,10 @@
 - 【smell·入台账非门槛】agents.py:280-287 与 judge.py:221-228 _build 同参可提共享工厂；5 测试文件重复 FakeOcr/FakeLlm 可收 conftest；(doc,charge,tools,settings,doc_issues,duplicate_of) 六件套穿参(Data Clumps)；graph 节点伸手 owner 私有方法(Feature Envy)。
 - 【已核查通过】循环依赖真消除；UTF-8 无 BOM；循环内无例行日志；Google 中文注释齐备；硬约束1-6 全过（六字段/operation/OCR 契约/字典/测试完整性含交错钉子/自主边界/离线 e2e 隔离）；无 scope creep（normalize/matching/validation/ocr_client 零 diff）。
 - 结论：有条件不可交付——judge blocker 必修；reextract major 需拍板；其余 minor 入台账或同批清理。
+
+### 票08 裁判断链修复 + 重抽反馈真生效 + 死代码清理（133 绿，已 merge；审查 blocker/major 已闭环）
+- 落地：`graph/judge.py:247` judge() 改 self._build().invoke（懒建链缓存）→真裁判启用路径生效；删 judge/repair 无读者 stats、repair self.ocr/模块 logger（构造签名 (ocr_client,settings) 保留兼容占位）。`graph/graph.py:125` force_ocr in ("ocr","reextract")→reextract 换路重 OCR；:169 repair 留存 repair_feedback（gate 放行会清 gate_reason 故单独携带）；:188-190 extract 传 feedback；`state.py:57` +repair_feedback；`document_extractor.py:39-49/178-195` feedback 透传（只主单据、附件不带；兼容只接受基础签名的假 LLM）；`llm_extractor.py:115-148/160-179` feedback 计入缓存键+非空渲染"上次解析闸门反馈"段（无反馈逐字不变）。新增 tests/test_judge_reextract_feedback.py 7 条（真 LlmJudge+monkeypatch 假 ChatOpenAI 4 + reextract 主缝 3）。
+- 回归钉住：test_llm_judge_enabled_fail_verdict_really_blocks（先红 'NoneType' object has no attribute 'invoke'）；test_reextract_retry_forces_ocr_and_feeds_gate_reason（OCR 恰1次+假LLM实收 feedback）；test_reextract_exhausts_retries_to_pending_review（OCR 恰2次→PENDING_REVIEW）。
+- 经验/坑：str(ChatPromptValue) 是 repr（换行转义）→断言提示词内容须 .to_string()；gate_reason 语义="最近一次不放行的原因"、放行即清空→反馈须在 repair 节点留存副本。
+- 债/改进：reextract 对文本层本就干净的 PDF 重 OCR 未必更准，属"换路重试"既定语义（用户拍板 A）；stats 已删，如需可观测性须先接 pipeline 汇总真实读者再加，勿回退无读者死代码；judge() 后续改 _build 勿退回直调 self._chain。
+- 审查 blocker/major 至此闭环；剩余 minor（agents.py 死字段/回落无审计标记/两草稿偏差/提议名不留痕）待票07 合并后另批处理或入台账。

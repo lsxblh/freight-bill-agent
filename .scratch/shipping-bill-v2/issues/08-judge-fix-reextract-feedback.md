@@ -7,7 +7,7 @@
 
 **Blocked by:** 06
 
-**Status:** done (commits 92b8696+票文件, 133 passed, 待 lead merge)
+**Status:** done (commits 92b8696+c254d88, 133 passed/1 deselected, merged)
 
 - [x] 真 LlmJudge 启用路径回归测试（假 chain 驱动，钉住不再静默放行）
 - [x] reextract 带 force_ocr + gate_reason 进抽取反馈（重试与首次真正不同）
