@@ -31,6 +31,7 @@
 - `[候选]` ReAct 轨迹细粒度断言：目前最高缝 `BillingAgent.run` 只断言外部行为，可加工具调用序列/提案理由的断言，提升 agent 可测性。
 - `[候选]` 裁判/综合 agent 真模型选型与成本（`JUDGE_MODEL` 用哪个、token 预算），票06 评测时定。
 - `[候选]` 统一 Python 环境：conda `code` vs 项目 `.venv`(uv 空壳 3.14)，双环境混乱，见拍板清单。
+- `[候选]` ruff 遗留 20 条判断类 lint（0.17.5 默认规则集，89 条机械类已 `--fix` 提交 `2ec09c3`、137 绿）：`BLE001`×6 + `S110`×4 是失败隔离的有意设计（改窄捕/加日志=行为变更需拍板）；`ISC004`×3 是有意多行字符串拼接（非漏逗号 bug）；`RUF059`×2 死局部变量；`SIM102`×2/`SIM103`/`PIE810`/`C408` 纯可读性。明细见六节 ruff 小节。
 
 ## 四、需用户拍板清单
 
@@ -115,3 +116,14 @@
 - 经验：两层回落结构=循环内 complete() 异常→确定性提案(agent_confidence 非空)；循环外装配异常→record_chain(agent_confidence=None+warnings 留痕)；测外层用畸形提案(reasons 非列表)而非抛异常 complete()。提示词指纹覆盖模板+输出 Schema；agent SYSTEM_PROMPT 不在草稿缓存指纹范围（agent 无响应缓存）。
 - 观察：无规则防守的补位字段是草稿质量波动重灾区；PDF2 issuer 误读(Pilot Aiship)有规则防守被"规则为准"吸收，recipient 无规则防守则误读直穿。
 - 流程：e2e --basetemp=.work/e2e_tmp 落证据；跑后核验新旧缓存键+离线 merge 复现差异根因，不必二次联网。
+
+### ruff 首跑 + 安全修复（0.17.5，89 修 / 20 留，commit 2ec09c3，137 绿）
+- 环境：ruff 0.17.5 经 `uv tool install` 安装、已在 PATH；项目**无 ruff 配置**，`--isolated` 对比确认用其自带默认规则集（比老版本宽，故首扫即含 FURB/UP/SIM/BLE 等）。`.ruff_cache/` 已加 `.gitignore`。
+- 首扫 106 条（86 可自动修）；用户确认"修机械类+跑测试"后 `ruff check --fix` 实修 89、剩 20；全量 137 passed/1 deselected 行为不变。
+- 已修 89（机械风格，不改行为）：`FURB167`×48 `re.I`→`re.IGNORECASE`（集中 `freight_bill/extract/rules.py`）、`UP037`×9 去注解引号、`RUF022`×9 `__all__` 排序、`RUF100`×6 删无用 noqa、`UP035`×3 弃用 import、`I001`×3 import 排序、`FURB105`×2 `print("")`、`RUF023`×2 `__slots__` 排序、`RUF010`/`UP012`/`SIM905`/`RET501` 各 1。
+- 保留 20（判断类，盲改会破坏设计或纯可读性）：
+  - `BLE001`×6 + `S110`×4：宽捕 `Exception`/`try-except-pass`，是"单文件失败不拖垮整批"的失败隔离有意设计（`freight_bill/cli.py:241`、`config.py:17`、`extract/llm_extractor.py:166,209` 等）。改窄捕或加日志=行为变更，需拍板。
+  - `ISC004`×3：`freight_bill/graph/judge.py:209,215`、`tests/test_judge_reextract_feedback.py:155` 为**有意的多行字符串拼接**（prompt 换行写），已读码确认非漏逗号 bug；如要消警可加显式括号，纯风格。
+  - `RUF059`×2：解包后未用的死局部 `freight_bill/extract/rules.py:831 ref_rule`、`freight_bill/io_utils.py:226 longer`（与已清 factors 同类）。
+  - `SIM102`×2（`extract/merge.py:111`、`ingest/ocr_client.py:91` 可折叠 if）、`SIM103`（`extract/rows.py:230`）、`PIE810`（`ingest/dispatcher.py:31` startswith 合并）、`C408`（`tests/test_validators.py:16` dict() 改字面量）：纯可读性。
+- 规矩（~/.dsh/AGENTS.md）：Python 写完/改完交付前对改动文件跑 `ruff check`；`--fix` 须经用户确认才用。
