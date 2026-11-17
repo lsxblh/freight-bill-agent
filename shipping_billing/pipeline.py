@@ -28,6 +28,8 @@ from .extract.document_extractor import DocumentExtractor
 from .extract.llm_extractor import LlmExtractor
 from .graph import build_billing_graph
 from .graph.graph import RECURSION_LIMIT
+from .graph.judge import LlmJudge
+from .graph.repair import RepairAgent
 from .harness.report import build_markdown, write_markdown
 from .harness.runlog import FileLog, RunLog
 from .ingest import OcrClient, collect_input_files
@@ -68,6 +70,8 @@ class BillingAgent:
         ledger: Ledger | None = None,
         ocr_client: OcrClient | None = None,
         llm: LlmExtractor | None = None,
+        judge: LlmJudge | None = None,
+        repair: RepairAgent | None = None,
     ) -> None:
         """初始化编排器。
 
@@ -78,11 +82,17 @@ class BillingAgent:
             llm: LLM 抽取器注入缝；测试/演示可注入假实现，
                 缺省时按配置构造真实抽取器。注入优先，编排层不再
                 无条件硬造客户端。
+            judge: 软失败裁判注入缝（票03）；缺省时按 JUDGE_MODEL 配置
+                构造，未启用则为 None（退化为纯代码指标）。
+            repair: 解析补救 agent 注入缝（票03）；缺省时用注入的 OCR
+                客户端构造，离线可回放。
         """
         self.settings = settings or Settings.from_env()
         self.ocr = ocr_client or OcrClient(self.settings)
         self.llm = llm or LlmExtractor(self.settings)
         self.extractor = DocumentExtractor(self.settings, self.llm)
+        self.judge = judge if judge is not None else self._build_judge()
+        self.repair = repair if repair is not None else RepairAgent(self.ocr, self.settings)
         self.ledger = ledger if ledger is not None else Ledger.load(
             self.settings.ledger_path or "", entity=self.settings.accounting_entity
         )
@@ -92,6 +102,13 @@ class BillingAgent:
         self._graph = None
         self._doc_bill_ids: dict[int, str] = {}
         self._duplicates: dict[tuple, str] = {}
+
+    # ------------------------------------------------------------------ #
+    def _build_judge(self) -> LlmJudge | None:
+        """按配置构造软失败裁判；未启用返回 None（退化为纯代码指标，不阻断离线）。"""
+        if self.settings.judge_enabled and self.settings.judge_model:
+            return LlmJudge(self.settings)
+        return None
 
     # ------------------------------------------------------------------ #
     def graph(self):

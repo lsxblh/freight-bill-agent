@@ -5,9 +5,11 @@
 票04 换成综合 agent（ReAct 工作台）；尾巴负责把关落账，票05 在落账前
 加钱关键项确定性交叉验证。
 
-条件边预留：
-* ingest / extract 之后：失败隔离路由，票03 在此接入软失败闸门与
-  解析补救循环；
+条件边：
+* ingest 之后：硬失败隔离（产出 PENDING_REVIEW）；成功则进软失败闸门 gate。
+  gate 之后：放行→extract；软失败且重试<上限→repair（换策略回到 ingest 重走）；
+  重试耗尽→pending_review（票03）；
+* extract 之后：失败隔离 / 空队列收尾；
 * tail → synthesize：逐条费用循环。必须逐条"装配→落账→登记重复"，
   因为认亲读的是活台账（先落账的 CREATE 行可能被同单据后一条费用
   认亲），重复登记也按条生效——整单批量装配再落账会改变行为。
@@ -26,6 +28,8 @@ from ..harness.resilience import retry
 from ..ingest import load_document
 from ..io_utils import get_logger
 from ..validation.validators import validate_document
+from .judge import run_gate
+from .repair import build_pending_review_record
 from .state import BillingState
 
 if TYPE_CHECKING:
@@ -51,34 +55,112 @@ def build_billing_graph(owner: "BillingAgent"):
     """
     settings = owner.settings
     load_with_retry = retry(times=2, base_delay=0.4, logger=logger)(
-        lambda path: load_document(
-            path, ocr_client=owner.ocr, work_dir=settings.work_dir
+        lambda path, force_ocr=False: load_document(
+            path, ocr_client=owner.ocr, work_dir=settings.work_dir, force_ocr=force_ocr
         )
     )
+
+    def _pending_review_updates(
+        state: BillingState, reason: str, *, stage: str, hard: bool = False
+    ) -> dict[str, Any]:
+        """"放弃→PENDING_REVIEW"的输出更新（硬失败与重试耗尽共用）。
+
+        追加一条 PENDING_REVIEW 记录 + 结论，不跑下游抽取/落账。是否计入
+        failure 由 hard 区分——这是两类不同性质的事件：
+
+        * hard=True（ingest 抛异常=硬崩溃）：记一条 failure、日志标记 failed。
+          崩溃是意外错误，沿用 failures 机制隔离并上报。
+        * hard=False（闸门重试耗尽=主动转人工）：只产 PENDING_REVIEW 记录，
+          不计 failure、不标记 failed。PENDING_REVIEW 是复核结论而非批次失败，
+          与"记账方向不明转人工"同类（现有端到端里此类记录本就不进 failures）。
+          text 模式图片无 OCR 可读即属此类，test_ocr_modes_offline 钉住
+          `not result.failures`，故救不回不能误记为失败。
+
+        Args:
+            state: 当前单文件状态。
+            reason: 转人工的原因。
+            stage: failure 条目所属阶段（仅 hard=True 时使用）。
+            hard: 是否硬崩溃（计 failure）；默认 False=主动转人工复核。
+
+        Returns:
+            records/assessments（hard 时另含 failures）的更新字典。
+        """
+        path = state["path"]
+        entry = state["entry"]
+        record, assessment = build_pending_review_record(
+            path, state.get("raw"), reason, settings
+        )
+        records = list(state.get("records") or [])
+        assessments = list(state.get("assessments") or [])
+        records.append(record)
+        assessments.append(assessment)
+        entry.records += 1
+        entry.operations["PENDING_REVIEW"] = entry.operations.get("PENDING_REVIEW", 0) + 1
+        updates: dict[str, Any] = {"records": records, "assessments": assessments}
+        if hard:
+            failures = list(state.get("failures") or [])
+            if not any(f.get("file") == path.name for f in failures):
+                failures.append({"file": path.name, "stage": stage, "error": reason})
+            entry.status = "failed"
+            entry.error = reason
+            updates["failures"] = failures
+        else:
+            entry.warnings.append(f"转人工复核: {reason}")
+        return updates
 
     # ------------------------------------------------------------------ #
     # 四段节点
     # ------------------------------------------------------------------ #
     def ingest(state: BillingState) -> dict[str, Any]:
-        """段1 读进来：解析文件（EML/PDF/图片/Excel/Word，附件递归，带重试）。"""
+        """段1 读进来：解析文件（EML/PDF/图片/Excel/Word，附件递归，带重试）。
+
+        补救循环回来时消费 repair_strategy：ocr → 强制重 OCR。硬失败（完全
+        读不出）→ 产出一条 PENDING_REVIEW 记录，不拿垃圾跑下游。
+        """
         path = state["path"]
         entry = state["entry"]
+        force_ocr = state.get("repair_strategy") == "ocr"
         try:
-            raw = load_with_retry(path)
+            raw = load_with_retry(path, force_ocr=force_ocr)
         except Exception as exc:  # noqa: BLE001 - 单文件失败不影响整批
             entry.status = "failed"
             entry.error = f"{type(exc).__name__}: {exc}"
             logger.exception("解析失败: %s", path)
             return {
                 "raw": None,
-                "failures": [
-                    {"file": path.name, "stage": "ingest", "error": entry.error}
-                ],
+                **_pending_review_updates(state, entry.error, stage="ingest", hard=True),
             }
         entry.kind = raw.kind
         entry.ocr_source = raw.ocr_source
-        entry.warnings = list(raw.warnings)
+        # 保留补救重试备注（跨重读不丢反馈），再叠加本次原件警告。
+        repair_notes = [w for w in entry.warnings if w.startswith("补救重试")]
+        entry.warnings = repair_notes + list(raw.warnings)
         return {"raw": raw}
+
+    def gate(state: BillingState) -> dict[str, Any]:
+        """软失败闸门：代码指标先筛，边界 case 交裁判吹哨（票03）。"""
+        verdict = run_gate(state["raw"], owner.judge, settings)
+        if not verdict.passed:
+            logger.info("软失败闸门 %s: %s", state["path"].name, verdict.reason)
+        return {"gate_passed": verdict.passed, "gate_reason": verdict.reason or None}
+
+    def repair(state: BillingState) -> dict[str, Any]:
+        """解析补救：自主换策略并计数，回到 ingest 重走（票03，重试≤上限）。"""
+        plan = owner.repair.plan(state["raw"], state.get("gate_reason") or "")
+        retries = state.get("retries", 0) + 1
+        entry = state["entry"]
+        entry.warnings.append(
+            f"补救重试 {retries}/{settings.ingest_max_retries}: {plan.reason}"
+        )
+        logger.info(
+            "补救 %s: 策略=%s 重试=%d", state["path"].name, plan.strategy, retries
+        )
+        return {"retries": retries, "repair_strategy": plan.strategy}
+
+    def pending_review(state: BillingState) -> dict[str, Any]:
+        """重试耗尽：产出 PENDING_REVIEW（含原因），不拿垃圾跑下游（票03）。"""
+        reason = state.get("gate_reason") or "重试耗尽仍无法可靠解析"
+        return _pending_review_updates(state, reason, stage="gate")
 
     def extract(state: BillingState) -> dict[str, Any]:
         """段2 双路抽取：规则草稿 ∥ LLM 草稿 → 融合 → 标准化。
@@ -182,8 +264,18 @@ def build_billing_graph(owner: "BillingAgent"):
     # 条件边路由（票03/04 的接入点）
     # ------------------------------------------------------------------ #
     def route_after_ingest(state: BillingState) -> str:
-        """读进来之后：失败隔离。票03 在此加软失败闸门与补救循环。"""
-        return END if state["entry"].status == "failed" else "extract"
+        """读进来之后：硬失败隔离（PENDING_REVIEW 已在 ingest 产出）；成功进闸门。"""
+        if state["entry"].status == "failed" or state.get("raw") is None:
+            return END
+        return "gate"
+
+    def route_after_gate(state: BillingState) -> str:
+        """闸门之后：放行→extract；软失败且重试<上限→repair；耗尽→pending_review。"""
+        if state.get("gate_passed", True):
+            return "extract"
+        if state.get("retries", 0) < settings.ingest_max_retries:
+            return "repair"
+        return "pending_review"
 
     def route_after_extract(state: BillingState) -> str:
         """双路抽取之后：失败隔离；无费用可处理时直接收尾。"""
@@ -200,13 +292,23 @@ def build_billing_graph(owner: "BillingAgent"):
     # ------------------------------------------------------------------ #
     graph = StateGraph(BillingState)
     graph.add_node("ingest", ingest)
+    graph.add_node("gate", gate)
+    graph.add_node("repair", repair)
+    graph.add_node("pending_review", pending_review)
     graph.add_node("extract", extract)
     graph.add_node("synthesize", synthesize)
     graph.add_node("tail", tail)
     graph.add_edge(START, "ingest")
     graph.add_conditional_edges(
-        "ingest", route_after_ingest, {"extract": "extract", END: END}
+        "ingest", route_after_ingest, {"gate": "gate", END: END}
     )
+    graph.add_conditional_edges(
+        "gate",
+        route_after_gate,
+        {"extract": "extract", "repair": "repair", "pending_review": "pending_review"},
+    )
+    graph.add_edge("repair", "ingest")
+    graph.add_edge("pending_review", END)
     graph.add_conditional_edges(
         "extract", route_after_extract, {"synthesize": "synthesize", END: END}
     )

@@ -64,7 +64,9 @@ def _extract_with_pypdf(raw_bytes: bytes) -> tuple[list[str], str | None]:
         return [], f"pypdf 解析失败: {type(exc).__name__}: {exc}"
 
 
-def parse_pdf(path: Path, *, ocr_client: OcrClient, role: str = "primary") -> RawDocument:
+def parse_pdf(
+    path: Path, *, ocr_client: OcrClient, role: str = "primary", force_ocr: bool = False
+) -> RawDocument:
     settings = ocr_client.settings
     raw_bytes = path.read_bytes()
     sha = sha256_bytes(raw_bytes)
@@ -82,7 +84,13 @@ def parse_pdf(path: Path, *, ocr_client: OcrClient, role: str = "primary") -> Ra
     ocr_confidence: float | None = 1.0 if text else None
     tables: list[RawTable] = []
 
-    need_ocr = settings.ocr_mode == "api" or len(text) < settings.pdf_text_layer_min_chars
+    # force_ocr：票03 解析补救"文本层空/脏→强制重 OCR"策略入口；
+    # 其余情况仍按文本层字符数阈值决定是否转 OCR（不改默认行为）。
+    need_ocr = (
+        force_ocr
+        or settings.ocr_mode == "api"
+        or len(text) < settings.pdf_text_layer_min_chars
+    )
     if need_ocr:
         outcome = ocr_client.process_file(path)
         if outcome.text or outcome.tables:

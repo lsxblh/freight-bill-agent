@@ -46,6 +46,7 @@ def load_document(
     role: str = "primary",
     depth: int = 0,
     work_dir: Path | None = None,
+    force_ocr: bool = False,
 ) -> RawDocument:
     path = Path(path)
     if depth > MAX_DEPTH:
@@ -76,7 +77,7 @@ def load_document(
             path, ocr_client=ocr_client, work_dir=work, role=role, depth=depth
         )
     if kind == "pdf":
-        return parse_pdf(path, ocr_client=ocr_client, role=role)
+        return parse_pdf(path, ocr_client=ocr_client, role=role, force_ocr=force_ocr)
     if kind == "image":
         return parse_image(path, ocr_client=ocr_client, role=role)
     if kind == "excel":
