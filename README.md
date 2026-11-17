@@ -30,7 +30,7 @@ python -m shipping_billing eval
 > 无 key 时构造即报 `MissingAgentKeyError`（退出码 2），不静默降级。
 > 确需纯确定性回退时显式设 `AGENT_REQUIRED_KEY=false`（兼容模式）。
 > `eval` 是 7/7 回归闸门，内部钉住离线确定性，不受该开关影响；
-> 真模型端到端质量用 `pytest -m e2e` 单独验证（见 §6）。
+> 真模型端到端质量用 `pytest -m e2e` 单独验证（见 §6）。质量证据与已知局限见 [docs/QUALITY_EVIDENCE.md](docs/QUALITY_EVIDENCE.md)。
 
 输出三个文件：
 
@@ -111,7 +111,7 @@ data/
 ├── ocr_cache/            # OCR 结果回放（内容哈希命名）
 └── expectations/golden.json     # 金标准用例
 docs/                     # 设计文档
-tests/                    # 126 个离线测试（含端到端回归）+ 1 个真模型 e2e（显式 -m e2e）
+tests/                    # 137 个离线测试（含端到端回归）+ 1 个真模型 e2e（显式 -m e2e）
 scripts/ocr_smoke_test.py # 真实 OCR API 连通性自测
 ```
 
@@ -274,7 +274,7 @@ python -m pytest tests/test_e2e_real_agent.py -m e2e
 # 把更新写回台账
 python -m shipping_billing run --inputs data/samples --write-ledger
 
-# 测试（默认离线套件：126 个，不含真模型 e2e）
+# 测试（默认离线套件：137 个，不含真模型 e2e）
 python -m pytest tests -q
 ```
 
