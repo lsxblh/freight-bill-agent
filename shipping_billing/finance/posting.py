@@ -86,6 +86,32 @@ def decide_posting(
             requires_review=True,
         )
 
+    return _finalize_direction(
+        role=role,
+        document_type=document_type,
+        amount_sign=amount_sign,
+        issuer_score=issuer_score,
+        recipient_score=recipient_score,
+        reasoning=reasoning,
+        warnings=warnings,
+    )
+
+
+def _finalize_direction(
+    *,
+    role: str,
+    document_type: str | None,
+    amount_sign: int,
+    issuer_score: float,
+    recipient_score: float,
+    reasoning: list[str],
+    warnings: list[str],
+) -> PostingDecision:
+    """角色已定后的方向修正与置信度（decide_posting 与 posting_from_role 共用）。
+
+    这一段是"角色→AR/AP"的死规则：基础方向 + 单据类型反转 + 红字反转，
+    同输入同结果。reasoning/warnings 由调用方传入并原地追加。
+    """
     base = "AR" if role == "issuer" else "AP"
     reasoning.append(
         f"我方是单据的{'签发方（对外开票/收费）' if role == 'issuer' else '接收方（被开票/被收费）'}，"
@@ -131,4 +157,63 @@ def decide_posting(
     )
 
 
-__all__ = ["PostingDecision", "decide_posting"]
+def posting_from_role(
+    *,
+    role: str | None,
+    entity: str,
+    issuer: str | None,
+    recipient: str | None,
+    document_type: str | None,
+    amount_sign: int = 1,
+) -> PostingDecision:
+    """接受综合 agent 判出的角色候选，按死规则落"角色→AR/AP"那一下（票04）。
+
+    与 decide_posting 的区别仅在角色来源：decide_posting 用公司名相似度
+    自行推断角色，本入口直接采用 agent 推理出的角色（四要素理解在 agent），
+    其后的方向修正/置信度完全一致。角色缺失或非法 → 不猜，转人工复核。
+    """
+    reasoning: list[str] = []
+    warnings: list[str] = []
+
+    if not entity:
+        return PostingDecision(
+            posting_type=None,
+            role=None,
+            confidence=0.0,
+            reasoning=["未配置记账主体，无法判断 AR/AP"],
+            warnings=["accounting_entity 为空"],
+            requires_review=True,
+        )
+
+    if role not in {"issuer", "recipient"}:
+        warnings.append("综合 agent 未给出有效角色候选，无法确定应收应付")
+        reasoning.append("角色候选缺失或无效，按规范不允许仅凭单据类型猜测，转人工复核")
+        return PostingDecision(
+            posting_type=None,
+            role=None,
+            confidence=0.1,
+            reasoning=reasoning,
+            warnings=warnings,
+            requires_review=True,
+        )
+
+    issuer_score, recipient_score = _role_scores(entity, issuer, recipient)
+    reasoning.append(
+        f"综合 agent 判定我方角色为{'签发方' if role == 'issuer' else '接收方'}"
+    )
+    reasoning.append(
+        f"记账主体『{entity}』与签发方『{issuer or '未知'}』相似度 {issuer_score:.2f}，"
+        f"与接收方『{recipient or '未知'}』相似度 {recipient_score:.2f}"
+    )
+    return _finalize_direction(
+        role=role,
+        document_type=document_type,
+        amount_sign=amount_sign,
+        issuer_score=issuer_score,
+        recipient_score=recipient_score,
+        reasoning=reasoning,
+        warnings=warnings,
+    )
+
+
+__all__ = ["PostingDecision", "decide_posting", "posting_from_role"]

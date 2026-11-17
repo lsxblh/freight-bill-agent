@@ -68,6 +68,7 @@ class BillingAgent:
         ledger: Ledger | None = None,
         ocr_client: OcrClient | None = None,
         llm: LlmExtractor | None = None,
+        agent_llm: Any = None,
     ) -> None:
         """初始化编排器。
 
@@ -78,10 +79,14 @@ class BillingAgent:
             llm: LLM 抽取器注入缝；测试/演示可注入假实现，
                 缺省时按配置构造真实抽取器。注入优先，编排层不再
                 无条件硬造客户端。
+            agent_llm: 综合 agent 的 LLM 注入缝（票04）；受控面为
+                .enabled / .complete(prompt)->str。缺省 None 时综合段
+                沿用确定性入账链；注入启用实现时走 ReAct 工作台。
         """
         self.settings = settings or Settings.from_env()
         self.ocr = ocr_client or OcrClient(self.settings)
         self.llm = llm or LlmExtractor(self.settings)
+        self.agent_llm = agent_llm
         self.extractor = DocumentExtractor(self.settings, self.llm)
         self.ledger = ledger if ledger is not None else Ledger.load(
             self.settings.ledger_path or "", entity=self.settings.accounting_entity

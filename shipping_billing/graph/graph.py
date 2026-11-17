@@ -26,6 +26,7 @@ from ..harness.resilience import retry
 from ..ingest import load_document
 from ..io_utils import get_logger
 from ..validation.validators import validate_document
+from .agents import synthesize_charge
 from .state import BillingState
 
 if TYPE_CHECKING:
@@ -106,10 +107,11 @@ def build_billing_graph(owner: "BillingAgent"):
         return {"documents": documents, "queue": queue}
 
     def synthesize(state: BillingState) -> dict[str, Any]:
-        """段3 综合（票02 占位：现有确定性逻辑，只产提案不落账）。
+        """段3 综合（票04：综合 agent ReAct 工作台，只产提案不落账）。
 
-        对当前费用：单据级校验（每单一次）+ 重复 lookup +
-        认亲 → 记账方向 → 校验 → 装配。票04 将换成综合 agent。
+        对当前费用：单据级校验（每单一次）+ 重复 lookup 后，交综合 agent
+        自主调工具（认亲/读原文/查台账/查字典）产提案，再经死规则装配。
+        未注入 agent LLM 时沿用确定性入账链，行为与票02 一致。
         """
         doc, charge = state["queue"][0]
         doc_issues = dict(state.get("doc_issues") or {})
@@ -125,7 +127,7 @@ def build_billing_graph(owner: "BillingAgent"):
             "settings": settings,
         }
         try:
-            assessment = owner.record_chain.invoke(payload)
+            assessment = synthesize_charge(owner, payload, raw=state.get("raw"))
         except Exception as exc:  # noqa: BLE001 - 单条费用失败不影响其余费用
             logger.exception("记录装配失败: %s", state["path"])
             return {

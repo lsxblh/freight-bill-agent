@@ -201,6 +201,10 @@ class AuditTrail(BaseModel):
     matched_bill_id: str | None = None
     match_rule: str | None = None
     field_changes: list[dict[str, Any]] = Field(default_factory=list)
+    #: 综合 agent 自标置信度（票04）；确定性路径不产出，保持 None。
+    agent_confidence: float | None = None
+    #: 综合 agent 判出的我方角色候选 issuer/recipient（票04）；None 表示未判出。
+    agent_role: str | None = None
 
 
 class OutputRecord(BaseModel):
