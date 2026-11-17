@@ -22,7 +22,7 @@
     },
     "audit_trail": {
       "ai_reasoning": [
-        "从 PDF 示例账单2.pdf（pdf，line 26 (section header line 25)）解析出费用：HANDLING CHARGE，来源 pdf_text_layer",
+        "从 PDF 示例账单2.pdf（pdf，line 25 (section header line 24)）解析出费用：HANDLING CHARGE，来源 pdf_text_layer",
         "记账主体『NEPTUNE SHIPPING LIMITED』与签发方『NEPTUNE SHIPPING LIMITED』相似度 1.00，与接收方『未知』相似度 0.00",
         "我方是单据的签发方（对外开票/收费），基础方向判定为 AR",
         "最终过账方向：AR",
@@ -37,12 +37,12 @@
         "file": "PDF 示例账单2.pdf",
         "role": "primary",
         "kind": "pdf",
-        "locator": "line 26 (section header line 25)",
+        "locator": "line 25 (section header line 24)",
         "ocr_source": "pdf_text_layer",
         "extractor": "rules",
         "document_sha256": "70dcc3e7d07a0012fc642af256371f25438eed2c7bbe25442b7ffbd193fd34ba"
       },
-      "confidence": 0.82,
+      "confidence": 0.77,
       "warnings": [
         "交易双方信息不完整"
       ],
@@ -56,7 +56,14 @@
           "reason": "输入材料金额与台账不一致",
           "kind": "overwrite"
         }
-      ]
+      ],
+      "agent_confidence": null,
+      "agent_role": null,
+      "quantity": 1.0,
+      "unit_rate": 65.0,
+      "subtotal": null,
+      "tax": null,
+      "source_snippet": "HANDLING CHARGE - 65.00 1.00 C 65.00"
     }
   },
   {
@@ -82,7 +89,7 @@
     },
     "audit_trail": {
       "ai_reasoning": [
-        "从 PDF 示例账单2.pdf（pdf，line 27 (section header line 25)）解析出费用：ADD'L DETENTION FREE TIME CHARGE，来源 pdf_text_layer",
+        "从 PDF 示例账单2.pdf（pdf，line 26 (section header line 24)）解析出费用：ADD'L DETENTION FREE TIME CHARGE，来源 pdf_text_layer",
         "费用名称标准化：'ADD'L DETENTION FREE TIME CHARGE' → 'Detention Charge'",
         "记账主体『NEPTUNE SHIPPING LIMITED』与签发方『NEPTUNE SHIPPING LIMITED』相似度 1.00，与接收方『未知』相似度 0.00",
         "我方是单据的签发方（对外开票/收费），基础方向判定为 AR",
@@ -94,18 +101,25 @@
         "file": "PDF 示例账单2.pdf",
         "role": "primary",
         "kind": "pdf",
-        "locator": "line 27 (section header line 25)",
+        "locator": "line 26 (section header line 24)",
         "ocr_source": "pdf_text_layer",
         "extractor": "rules",
         "document_sha256": "70dcc3e7d07a0012fc642af256371f25438eed2c7bbe25442b7ffbd193fd34ba"
       },
-      "confidence": 0.8,
+      "confidence": 0.75,
       "warnings": [
         "交易双方信息不完整"
       ],
       "matched_bill_id": null,
       "match_rule": null,
-      "field_changes": []
+      "field_changes": [],
+      "agent_confidence": null,
+      "agent_role": null,
+      "quantity": 1.0,
+      "unit_rate": 1310.4,
+      "subtotal": null,
+      "tax": null,
+      "source_snippet": "4 ADD'L DETENTION FREE TIME CHARGE - 1,310.40 1.00 C 1,310.40"
     }
   },
   {
@@ -131,7 +145,7 @@
     },
     "audit_trail": {
       "ai_reasoning": [
-        "从 PDF 示例账单2.pdf（pdf，line 28 (section header line 25)）解析出费用：HANDLING CHARGE，来源 pdf_text_layer",
+        "从 PDF 示例账单2.pdf（pdf，line 27 (section header line 24)）解析出费用：HANDLING CHARGE，来源 pdf_text_layer",
         "记账主体『NEPTUNE SHIPPING LIMITED』与签发方『NEPTUNE SHIPPING LIMITED』相似度 1.00，与接收方『未知』相似度 0.00",
         "我方是单据的签发方（对外开票/收费），基础方向判定为 AR",
         "最终过账方向：AR",
@@ -144,18 +158,25 @@
         "file": "PDF 示例账单2.pdf",
         "role": "primary",
         "kind": "pdf",
-        "locator": "line 28 (section header line 25)",
+        "locator": "line 27 (section header line 24)",
         "ocr_source": "pdf_text_layer",
         "extractor": "rules",
         "document_sha256": "70dcc3e7d07a0012fc642af256371f25438eed2c7bbe25442b7ffbd193fd34ba"
       },
-      "confidence": 0.82,
+      "confidence": 0.77,
       "warnings": [
         "交易双方信息不完整"
       ],
       "matched_bill_id": "BILL-1002",
       "match_rule": "单据编号+费用名称",
-      "field_changes": []
+      "field_changes": [],
+      "agent_confidence": null,
+      "agent_role": null,
+      "quantity": 1.0,
+      "unit_rate": 35.0,
+      "subtotal": null,
+      "tax": null,
+      "source_snippet": "HANDLING CHARGE - 35.00 1.00 C 35.00"
     }
   },
   {
@@ -212,7 +233,14 @@
           "reason": "台账编号为空",
           "kind": "enrich"
         }
-      ]
+      ],
+      "agent_confidence": null,
+      "agent_role": null,
+      "quantity": null,
+      "unit_rate": null,
+      "subtotal": null,
+      "tax": null,
+      "source_snippet": "On Carriage Additional - US EmOCA17 USD 245.0000"
     }
   },
   {
@@ -257,7 +285,14 @@
       "warnings": [],
       "matched_bill_id": null,
       "match_rule": null,
-      "field_changes": []
+      "field_changes": [],
+      "agent_confidence": null,
+      "agent_role": null,
+      "quantity": null,
+      "unit_rate": null,
+      "subtotal": null,
+      "tax": null,
+      "source_snippet": "WHARFAGE ADMINISTRATION FEE C 5.00 USD 5.00 1.0000 USD 5.00"
     }
   },
   {
@@ -302,7 +337,14 @@
       "warnings": [],
       "matched_bill_id": null,
       "match_rule": null,
-      "field_changes": []
+      "field_changes": [],
+      "agent_confidence": null,
+      "agent_role": null,
+      "quantity": null,
+      "unit_rate": null,
+      "subtotal": null,
+      "tax": null,
+      "source_snippet": "WHARFAGE *TT 2.85 USD 21.90 1.0000 USD 21.90"
     }
   },
   {
@@ -366,7 +408,14 @@
           "reason": "台账编号为空",
           "kind": "enrich"
         }
-      ]
+      ],
+      "agent_confidence": null,
+      "agent_role": null,
+      "quantity": null,
+      "unit_rate": null,
+      "subtotal": null,
+      "tax": null,
+      "source_snippet": "SHA pay TAR:H/C $50"
     }
   }
 ]

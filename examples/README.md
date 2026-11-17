@@ -28,10 +28,13 @@ python -m shipping_billing eval --out-dir examples/demo
 ## 2. `zim_ap/` —— 换主体视角（ALL AMERICA FORWARDING, INC.，AP）
 
 ```bash
-python -m shipping_billing run --inputs data/samples/图片示例.png \
+# 确定性模式复现（不联网、不花 key）：关掉综合 agent 命脉 + OCR 走本地缓存
+AGENT_REQUIRED_KEY=false python -m shipping_billing run --inputs data/samples/图片示例.png \
   --ledger data/ledger/existing_bills.json \
   --entity "ALL AMERICA FORWARDING, INC." \
+  --ocr-mode cache \
   --out-dir examples/zim_ap
+# Windows PowerShell：先 $env:AGENT_REQUIRED_KEY='false' 再跑上面 python 命令
 ```
 
 同一张 ZIM 发票，主体换成收票方后：

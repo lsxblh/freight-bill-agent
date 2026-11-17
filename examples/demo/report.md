@@ -10,7 +10,7 @@
 | 处理文件数 | 4 |
 | 解析单据数 | 4 |
 | 输出记录数 | 7 |
-| 总耗时 | 0.36s |
+| 总耗时 | 0.98s |
 | 新增账单 | 1 |
 | 更新账单 | 1 |
 | 无需变更 | 2 |
@@ -23,9 +23,9 @@
 
 | # | 操作 | 单据类型 | 单据编号 | 日期 | 签发方 → 接收方 | 费用项目 | 金额 | 币种 | 付款 | AR/AP | 置信度 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | UPDATE | Debit Note | DC-108478 | 2026-10-24 | NEPTUNE SHIPPING LIMITED → - | Handling Charge | 65.00 | USD | COD | AR | 0.82 |
-| 2 | CREATE | Debit Note | DC-108478 | 2026-10-24 | NEPTUNE SHIPPING LIMITED → - | Detention Charge | 1,310.40 | USD | COD | AR | 0.80 |
-| 3 | NO_CHANGE | Debit Note | DC-108478 | 2026-10-24 | NEPTUNE SHIPPING LIMITED → - | Handling Charge | 35.00 | USD | COD | AR | 0.82 |
+| 1 | UPDATE | Debit Note | DC-108478 | 2026-10-24 | NEPTUNE SHIPPING LIMITED → - | Handling Charge | 65.00 | USD | COD | AR | 0.77 |
+| 2 | CREATE | Debit Note | DC-108478 | 2026-10-24 | NEPTUNE SHIPPING LIMITED → - | Detention Charge | 1,310.40 | USD | COD | AR | 0.75 |
+| 3 | NO_CHANGE | Debit Note | DC-108478 | 2026-10-24 | NEPTUNE SHIPPING LIMITED → - | Handling Charge | 35.00 | USD | COD | AR | 0.77 |
 | 4 | NO_CHANGE | Arrival Notice | CMDUCHN4053601 | - | NEPTUNE SHIPPING LIMITED → CIMC WETRANS INTL LOG CO LTD | On Carriage Charge | 245.00 | USD | - | AR | 0.91 |
 | 5 | PENDING_REVIEW | Invoice | ORFR1618731 | 2025-10-03 | ZIM AMERICAN INTEGRATED SHIPPING SERVICES CO., LLC → ALL AMERICA FORWARDING, INC | Wharfage Administration Fee | 5.00 | USD | - | - | 0.82 |
 | 6 | PENDING_REVIEW | Invoice | ORFR1618731 | 2025-10-03 | ZIM AMERICAN INTEGRATED SHIPPING SERVICES CO., LLC → ALL AMERICA FORWARDING, INC | Wharfage | 21.90 | USD | - | - | 0.82 |
@@ -35,9 +35,9 @@
 
 ### 记录 1：Handling Charge · 65.00 USD · UPDATE
 
-- 来源文件：`PDF 示例账单2.pdf`（pdf，line 26 (section header line 25)，抽取方式 rules，OCR pdf_text_layer）
+- 来源文件：`PDF 示例账单2.pdf`（pdf，line 25 (section header line 24)，抽取方式 rules，OCR pdf_text_layer）
 - 命中台账：BILL-1001（单据编号+费用名称）
-- 从 PDF 示例账单2.pdf（pdf，line 26 (section header line 25)）解析出费用：HANDLING CHARGE，来源 pdf_text_layer
+- 从 PDF 示例账单2.pdf（pdf，line 25 (section header line 24)）解析出费用：HANDLING CHARGE，来源 pdf_text_layer
 - 记账主体『NEPTUNE SHIPPING LIMITED』与签发方『NEPTUNE SHIPPING LIMITED』相似度 1.00，与接收方『未知』相似度 0.00
 - 我方是单据的签发方（对外开票/收费），基础方向判定为 AR
 - 最终过账方向：AR
@@ -51,8 +51,8 @@
 
 ### 记录 2：Detention Charge · 1,310.40 USD · CREATE
 
-- 来源文件：`PDF 示例账单2.pdf`（pdf，line 27 (section header line 25)，抽取方式 rules，OCR pdf_text_layer）
-- 从 PDF 示例账单2.pdf（pdf，line 27 (section header line 25)）解析出费用：ADD'L DETENTION FREE TIME CHARGE，来源 pdf_text_layer
+- 来源文件：`PDF 示例账单2.pdf`（pdf，line 26 (section header line 24)，抽取方式 rules，OCR pdf_text_layer）
+- 从 PDF 示例账单2.pdf（pdf，line 26 (section header line 24)）解析出费用：ADD'L DETENTION FREE TIME CHARGE，来源 pdf_text_layer
 - 费用名称标准化：'ADD'L DETENTION FREE TIME CHARGE' → 'Detention Charge'
 - 记账主体『NEPTUNE SHIPPING LIMITED』与签发方『NEPTUNE SHIPPING LIMITED』相似度 1.00，与接收方『未知』相似度 0.00
 - 我方是单据的签发方（对外开票/收费），基础方向判定为 AR
@@ -63,9 +63,9 @@
 
 ### 记录 3：Handling Charge · 35.00 USD · NO_CHANGE
 
-- 来源文件：`PDF 示例账单2.pdf`（pdf，line 28 (section header line 25)，抽取方式 rules，OCR pdf_text_layer）
+- 来源文件：`PDF 示例账单2.pdf`（pdf，line 27 (section header line 24)，抽取方式 rules，OCR pdf_text_layer）
 - 命中台账：BILL-1002（单据编号+费用名称）
-- 从 PDF 示例账单2.pdf（pdf，line 28 (section header line 25)）解析出费用：HANDLING CHARGE，来源 pdf_text_layer
+- 从 PDF 示例账单2.pdf（pdf，line 27 (section header line 24)）解析出费用：HANDLING CHARGE，来源 pdf_text_layer
 - 记账主体『NEPTUNE SHIPPING LIMITED』与签发方『NEPTUNE SHIPPING LIMITED』相似度 1.00，与接收方『未知』相似度 0.00
 - 我方是单据的签发方（对外开票/收费），基础方向判定为 AR
 - 最终过账方向：AR
@@ -140,10 +140,10 @@
 
 | 文件 | 状态 | 耗时(ms) | 记录数 | 错误 |
 |---|---|---|---|---|
-| PDF 示例账单2.pdf | ok | 176 | 3 | - |
-| PDF示例账单1.pdf | ok | 57 | 1 | - |
-| 图片示例.png | ok | 16 | 2 | - |
-| 深圳容宇 PRE-ALERT SSZSE26093128 VASINGER LLC 1x40HQ  CNTR NO._ TIIU8975975   MBL NO._ OOLU4055331281  Arrived time 2026-10-30.eml | ok | 112 | 1 | - |
+| PDF 示例账单2.pdf | ok | 726 | 3 | - |
+| PDF示例账单1.pdf | ok | 76 | 1 | - |
+| 图片示例.png | ok | 23 | 2 | - |
+| 深圳容宇 PRE-ALERT SSZSE26093128 VASINGER LLC 1x40HQ  CNTR NO._ TIIU8975975   MBL NO._ OOLU4055331281  Arrived time 2026-10-30.eml | ok | 146 | 1 | - |
 
 ## 7. 评测指标
 

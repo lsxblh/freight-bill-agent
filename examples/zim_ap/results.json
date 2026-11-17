@@ -52,7 +52,14 @@
           "reason": "台账编号为空",
           "kind": "enrich"
         }
-      ]
+      ],
+      "agent_confidence": null,
+      "agent_role": null,
+      "quantity": null,
+      "unit_rate": null,
+      "subtotal": null,
+      "tax": null,
+      "source_snippet": "WHARFAGE ADMINISTRATION FEE C 5.00 USD 5.00 1.0000 USD 5.00"
     }
   },
   {
@@ -108,7 +115,14 @@
           "reason": "台账编号为空",
           "kind": "enrich"
         }
-      ]
+      ],
+      "agent_confidence": null,
+      "agent_role": null,
+      "quantity": null,
+      "unit_rate": null,
+      "subtotal": null,
+      "tax": null,
+      "source_snippet": "WHARFAGE *TT 2.85 USD 21.90 1.0000 USD 21.90"
     }
   }
 ]
