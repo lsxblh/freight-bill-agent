@@ -173,4 +173,4 @@ def parse_eml(
     )
 
 
-__all__ = ["parse_eml", "html_to_text"]
+__all__ = ["html_to_text", "parse_eml"]

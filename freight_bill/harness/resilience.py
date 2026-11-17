@@ -6,7 +6,8 @@ import functools
 import logging
 import random
 import time
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -29,7 +30,7 @@ def retry(
             for attempt in range(1, times + 1):
                 try:
                     return func(*args, **kwargs)
-                except exceptions as exc:  # noqa: PERF203
+                except exceptions as exc:
                     last_error = exc
                     if attempt >= times:
                         break

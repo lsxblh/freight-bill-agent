@@ -91,7 +91,7 @@ def _settings_from_args(args: argparse.Namespace) -> Settings:
 
 def _print_summary(result) -> None:
     summary = result.summary
-    print("")
+    print()
     print("=" * 68)
     print("  处理结果摘要")
     print("=" * 68)
@@ -108,7 +108,7 @@ def _print_summary(result) -> None:
         charge = record.charge_details
         amount = charge.amount if charge.amount is not None else 0
         print(
-            f"  [{record.operation:<14}] {str(record.document_info.reference_no or '-'):<18}"
+            f"  [{record.operation:<14}] {record.document_info.reference_no or '-'!s:<18}"
             f" {str(charge.charge_item)[:30]:<32} {amount:>12,.2f} {charge.currency or '':<4}"
             f" {record.financial_attributes.posting_type or '-':<3} conf={record.audit_trail.confidence}"
         )
@@ -176,7 +176,7 @@ def cmd_eval(args: argparse.Namespace) -> int:
     cases = load_expectations(golden)
     eval_result = evaluate(result.records, cases)
 
-    print("")
+    print()
     print("=" * 68)
     print("  评测结果")
     print("=" * 68)

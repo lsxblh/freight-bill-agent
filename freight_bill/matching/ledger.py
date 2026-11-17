@@ -82,7 +82,7 @@ class Ledger(BaseModel):
 
     # ---------------------------------------------------------------- #
     @classmethod
-    def load(cls, path: Path | str, *, entity: str | None = None) -> "Ledger":
+    def load(cls, path: Path | str, *, entity: str | None = None) -> Ledger:
         data = read_json(path, None)
         if data is None:
             logger.warning("台账文件不存在，使用空台账: %s", path)

@@ -15,9 +15,9 @@
 
 from __future__ import annotations
 
-from ..models import ChargeLine, ExtractedDocument
 from ..finance.posting import PostingDecision
-from .validators import ERROR, Issue, WARNING
+from ..models import ChargeLine, ExtractedDocument
+from .validators import ERROR, WARNING, Issue
 
 
 def score_record(

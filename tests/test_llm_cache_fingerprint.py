@@ -87,7 +87,7 @@ def test_stale_old_format_cache_not_reused(tmp_path: Path, monkeypatch) -> None:
     """
     settings = _settings(tmp_path)
     old_key = hashlib.sha256(
-        f"{settings.llm_model}|a.pdf|{TEXT}".encode("utf-8")
+        f"{settings.llm_model}|a.pdf|{TEXT}".encode()
     ).hexdigest()
     cache_dir = tmp_path / "llm"
     cache_dir.mkdir(parents=True, exist_ok=True)

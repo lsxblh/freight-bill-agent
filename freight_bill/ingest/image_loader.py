@@ -53,4 +53,4 @@ def parse_image(path: Path, *, ocr_client: OcrClient, role: str = "primary") -> 
     )
 
 
-__all__ = ["parse_image", "IMAGE_EXTS"]
+__all__ = ["IMAGE_EXTS", "parse_image"]

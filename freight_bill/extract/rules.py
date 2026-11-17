@@ -27,7 +27,10 @@ from ..models import (
 )
 from ..normalize.charge_names import find_alias_in_line, standardize
 from ..normalize.currency import ISO4217_CODES, normalize_currency
-from ..normalize.payment_terms import detect_payment_term_in_text, normalize_payment_term
+from ..normalize.payment_terms import (
+    detect_payment_term_in_text,
+    normalize_payment_term,
+)
 from .rows import (
     iter_charge_sections,
     parse_charge_row,
@@ -41,19 +44,19 @@ logger = get_logger("rules")
 # 单据类型
 # --------------------------------------------------------------------------- #
 _TITLE_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("Debit Note", re.compile(r"^\s*(?:DEBIT\s+NOTE|DEBIT\s+MEMO)\b", re.I)),
-    ("Credit Note", re.compile(r"^\s*(?:CREDIT\s+NOTE|CREDIT\s+MEMO)\b", re.I)),
-    ("Invoice", re.compile(r"^\s*(?:COMMERCIAL\s+|FREIGHT\s+)?INVOICE\b", re.I)),
-    ("Arrival Notice", re.compile(r"^\s*ARRIVAL\s+NOTICE\b", re.I)),
-    ("Bill of Lading", re.compile(r"^\s*(?:BILL\s+OF\s+LADING|B/L)\b", re.I)),
-    ("Statement", re.compile(r"^\s*(?:STATEMENT|ACCOUNT\s+STATEMENT)\b", re.I)),
-    ("Debit Note", re.compile(r"^\s*DEBIT\s+INVOICE\b", re.I)),
+    ("Debit Note", re.compile(r"^\s*(?:DEBIT\s+NOTE|DEBIT\s+MEMO)\b", re.IGNORECASE)),
+    ("Credit Note", re.compile(r"^\s*(?:CREDIT\s+NOTE|CREDIT\s+MEMO)\b", re.IGNORECASE)),
+    ("Invoice", re.compile(r"^\s*(?:COMMERCIAL\s+|FREIGHT\s+)?INVOICE\b", re.IGNORECASE)),
+    ("Arrival Notice", re.compile(r"^\s*ARRIVAL\s+NOTICE\b", re.IGNORECASE)),
+    ("Bill of Lading", re.compile(r"^\s*(?:BILL\s+OF\s+LADING|B/L)\b", re.IGNORECASE)),
+    ("Statement", re.compile(r"^\s*(?:STATEMENT|ACCOUNT\s+STATEMENT)\b", re.IGNORECASE)),
+    ("Debit Note", re.compile(r"^\s*DEBIT\s+INVOICE\b", re.IGNORECASE)),
 )
 
 
 def detect_document_type(text: str, *, subject: str | None = None, filename: str = "") -> tuple[str | None, float, str]:
     """返回 (类型, 置信度, 依据)。"""
-    if subject and re.search(r"PRE[\s\-]*ALERT", subject, re.I):
+    if subject and re.search(r"PRE[\s\-]*ALERT", subject, re.IGNORECASE):
         return "Pre-Alert", 0.9, "邮件主题包含 PRE-ALERT"
 
     head_lines = [ln.strip() for ln in (text or "").split("\n") if ln.strip()][:10]
@@ -160,8 +163,8 @@ _PARTY_BLOCK_PREFIXES = (
 def _trim_company(value: str) -> str:
     text = (value or "").strip(" :：,;.")
     text = re.split(r"\s{2,}", text)[0]
-    text = re.split(r"\s+(?:AS\s+AGENTS?|ON\s+BEHALF)\b", text, flags=re.I)[0]
-    text = re.split(r"\b(?:TEL|FAX|EMAIL|E-MAIL|ATTN|WEBSITE)\b", text, flags=re.I)[0]
+    text = re.split(r"\s+(?:AS\s+AGENTS?|ON\s+BEHALF)\b", text, flags=re.IGNORECASE)[0]
+    text = re.split(r"\b(?:TEL|FAX|EMAIL|E-MAIL|ATTN|WEBSITE)\b", text, flags=re.IGNORECASE)[0]
     # 先剥"尾部 币种+金额"（如 '... (LAX) USD 1,410.40'），否则金额会挡住
     # 下面的币种与括号清理，把整段尾缀留在公司名里。
     amount_tail = re.search(r"\s+([A-Z]{3})\s+[\d,]+(?:\.\d+)?$", text)
@@ -184,7 +187,7 @@ def _looks_like_company(value: str) -> bool:
         return False
     if len(text.split()) < 2 and not _COMPANY_HINT.search(text):
         return False
-    if re.search(r"@|https?://|www\.", text, re.I):
+    if re.search(r"@|https?://|www\.", text, re.IGNORECASE):
         return False
     letters = sum(ch.isalpha() for ch in text)
     if letters < 4:
@@ -232,24 +235,24 @@ def _company_candidates(lines: list[str], limit: int = 60) -> list[str]:
 
 _ISSUER_PATTERNS = (
     # TO 后允许无空格：部分 PDF 文本层把 TO 与公司名粘成 'TONEPTUNE...'
-    re.compile(r"GRAND\s+TOTAL\s+BALANCE\s+DUE\s+TO\s*(?P<v>[^\n]{3,90})", re.I),
-    re.compile(r"BALANCE\s+DUE\s+TO\s*(?P<v>[^\n]{3,90})", re.I),
-    re.compile(r"(?:ISSUED\s+BY|ISSUER|DOCUMENT\s+ISSUER)[ \t]*:?[ \t]*(?P<v>[^\n]{3,90})", re.I),
+    re.compile(r"GRAND\s+TOTAL\s+BALANCE\s+DUE\s+TO\s*(?P<v>[^\n]{3,90})", re.IGNORECASE),
+    re.compile(r"BALANCE\s+DUE\s+TO\s*(?P<v>[^\n]{3,90})", re.IGNORECASE),
+    re.compile(r"(?:ISSUED\s+BY|ISSUER|DOCUMENT\s+ISSUER)[ \t]*:?[ \t]*(?P<v>[^\n]{3,90})", re.IGNORECASE),
     re.compile(
         r"(?:ALL\s+PAYMENTS?\s+MUST\s+BE\s+ISSUED\s+TO|PAYMENTS?\s+TO|REMIT\s+TO|PAYABLE\s+TO)"
         r"[ \t]*:?[ \t]*(?P<v>[^\n]{3,90})",
-        re.I,
+        re.IGNORECASE,
     ),
     # 收款人常是银行或第三方账户名，不一定是单据签发方，故不作为签发方来源
 )
 
 _RECIPIENT_PATTERNS = (
-    re.compile(r"(?:BILL\s*TO|BILLED\s*TO|INVOICE\s+TO|SOLD\s+TO)[ \t]*:?[ \t]*(?P<v>[^\n]{3,90})", re.I),
-    re.compile(r"^(?:TO|MESSRS)[ \t]*:?[ \t]*(?P<v>[^\n]{3,90})", re.I),
-    re.compile(r"(?:PAYER|DEBTOR|CUSTOMER)[ \t]*:?[ \t]*(?P<v>[^\n]{3,90})", re.I),
+    re.compile(r"(?:BILL\s*TO|BILLED\s*TO|INVOICE\s+TO|SOLD\s+TO)[ \t]*:?[ \t]*(?P<v>[^\n]{3,90})", re.IGNORECASE),
+    re.compile(r"^(?:TO|MESSRS)[ \t]*:?[ \t]*(?P<v>[^\n]{3,90})", re.IGNORECASE),
+    re.compile(r"(?:PAYER|DEBTOR|CUSTOMER)[ \t]*:?[ \t]*(?P<v>[^\n]{3,90})", re.IGNORECASE),
 )
 
-_CONSIGNEE_PATTERN = re.compile(r"CONSIGNEE[ \t]*:?[ \t]*(?P<v>[^\n]{3,90})", re.I)
+_CONSIGNEE_PATTERN = re.compile(r"CONSIGNEE[ \t]*:?[ \t]*(?P<v>[^\n]{3,90})", re.IGNORECASE)
 
 
 def _count_party(candidates: list[str], text: str) -> dict[str, int]:
@@ -368,19 +371,19 @@ def _mailbox(value: str | None) -> str | None:
 # 编号 / 日期 / 币种 / 合计
 # --------------------------------------------------------------------------- #
 _REFERENCE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("Debit/Credit Note", re.compile(r"D/C\s*NO\.?\s*:?\s*([A-Z0-9][A-Z0-9\-/]{2,})", re.I)),
-    ("Debit/Credit Note", re.compile(r"(?:DEBIT|CREDIT)\s+NOTE\s*(?:NO\.?|NUMBER|#)\s*:?\s*([A-Z0-9][A-Z0-9\-/]{2,})", re.I)),
-    ("Invoice", re.compile(r"DEBIT\s+INVOICE\s*:?\s*([A-Z0-9][A-Z0-9\-/]{3,})", re.I)),
-    ("Invoice", re.compile(r"\bINVOICE\s*(?:NO\.?|NUMBER|#)\s*:?\s*([A-Z0-9][A-Z0-9\-/]{3,})", re.I)),
-    ("Arrival Notice", re.compile(r"\bB/L\s*(?:NO\.?|NUMBER|#)\s*:?\s*([A-Z0-9]{6,})", re.I)),
-    ("Bill of Lading", re.compile(r"\bB/L\s*(?:NO\.?|NUMBER|#)\s*:?\s*([A-Z0-9]{6,})", re.I)),
+    ("Debit/Credit Note", re.compile(r"D/C\s*NO\.?\s*:?\s*([A-Z0-9][A-Z0-9\-/]{2,})", re.IGNORECASE)),
+    ("Debit/Credit Note", re.compile(r"(?:DEBIT|CREDIT)\s+NOTE\s*(?:NO\.?|NUMBER|#)\s*:?\s*([A-Z0-9][A-Z0-9\-/]{2,})", re.IGNORECASE)),
+    ("Invoice", re.compile(r"DEBIT\s+INVOICE\s*:?\s*([A-Z0-9][A-Z0-9\-/]{3,})", re.IGNORECASE)),
+    ("Invoice", re.compile(r"\bINVOICE\s*(?:NO\.?|NUMBER|#)\s*:?\s*([A-Z0-9][A-Z0-9\-/]{3,})", re.IGNORECASE)),
+    ("Arrival Notice", re.compile(r"\bB/L\s*(?:NO\.?|NUMBER|#)\s*:?\s*([A-Z0-9]{6,})", re.IGNORECASE)),
+    ("Bill of Lading", re.compile(r"\bB/L\s*(?:NO\.?|NUMBER|#)\s*:?\s*([A-Z0-9]{6,})", re.IGNORECASE)),
 )
 
 _DATE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("D/C DATE", re.compile(r"D/C\s*DATE\s*:?\s*(\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4})", re.I)),
-    ("INVOICE DATE", re.compile(r"INVOICE\s*DATE\s*:?\s*(\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4})", re.I)),
-    ("ISSUE DATE", re.compile(r"(?:DATE\s+OF\s+ISSUE|ISSUED\s+DATE|ISSUE\s+DATE)\s*:?\s*(\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4})", re.I)),
-    ("DOCUMENT DATE", re.compile(r"(?:DOCUMENT\s+DATE|DATE)\s*:?\s*(\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4})", re.I)),
+    ("D/C DATE", re.compile(r"D/C\s*DATE\s*:?\s*(\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4})", re.IGNORECASE)),
+    ("INVOICE DATE", re.compile(r"INVOICE\s*DATE\s*:?\s*(\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4})", re.IGNORECASE)),
+    ("ISSUE DATE", re.compile(r"(?:DATE\s+OF\s+ISSUE|ISSUED\s+DATE|ISSUE\s+DATE)\s*:?\s*(\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4})", re.IGNORECASE)),
+    ("DOCUMENT DATE", re.compile(r"(?:DOCUMENT\s+DATE|DATE)\s*:?\s*(\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4})", re.IGNORECASE)),
 )
 
 _CURRENCY_PATTERNS = (
@@ -389,22 +392,22 @@ _CURRENCY_PATTERNS = (
 )
 
 _TOTAL_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"TOTAL\s+AMOUNT\s*:?\s*[A-Z]{0,3}\s*([\d,]+\.?\d*)", re.I),
-    re.compile(r"TOTAL\s+CHARGES?\s+TO\s+BE\s+PAID\s*:?\s*([\d,]+\.?\d*)", re.I),
-    re.compile(r"GRAND\s+TOTAL[^0-9\n]{0,40}([\d,]+\.\d{2})", re.I),
-    re.compile(r"^\s*TOTAL\s*:?\s*([\d,]+\.\d{2})", re.I | re.M),
-    re.compile(r"BALANCE\s+DUE[^0-9\n]{0,40}([\d,]+\.\d{2})", re.I),
-    re.compile(r"^\s*([A-Z]{3})\s+([\d,]+\.\d{2})\s*$", re.M),
+    re.compile(r"TOTAL\s+AMOUNT\s*:?\s*[A-Z]{0,3}\s*([\d,]+\.?\d*)", re.IGNORECASE),
+    re.compile(r"TOTAL\s+CHARGES?\s+TO\s+BE\s+PAID\s*:?\s*([\d,]+\.?\d*)", re.IGNORECASE),
+    re.compile(r"GRAND\s+TOTAL[^0-9\n]{0,40}([\d,]+\.\d{2})", re.IGNORECASE),
+    re.compile(r"^\s*TOTAL\s*:?\s*([\d,]+\.\d{2})", re.IGNORECASE | re.MULTILINE),
+    re.compile(r"BALANCE\s+DUE[^0-9\n]{0,40}([\d,]+\.\d{2})", re.IGNORECASE),
+    re.compile(r"^\s*([A-Z]{3})\s+([\d,]+\.\d{2})\s*$", re.MULTILINE),
 )
 
-_SUBTOTAL_RE = re.compile(r"(?:SUB\s*TOTAL|小计)\s*:?\s*([\d,]+\.?\d*)", re.I)
-_TAX_RE = re.compile(r"(?:TAX|VAT|GST|税额)\s*:?\s*([\d,]+\.?\d*)", re.I)
+_SUBTOTAL_RE = re.compile(r"(?:SUB\s*TOTAL|小计)\s*:?\s*([\d,]+\.?\d*)", re.IGNORECASE)
+_TAX_RE = re.compile(r"(?:TAX|VAT|GST|税额)\s*:?\s*([\d,]+\.?\d*)", re.IGNORECASE)
 
 # ---------------------------------------------------------------------------
 # 中文 / 表格型单据的字段标签（Excel、Word 常见）
 # ---------------------------------------------------------------------------
 _CN_REFERENCE = re.compile(
-    r"(?:单据编号|账单编号|发票号码|发票号|费用单号|单号)[\s|:]*([A-Z0-9][A-Z0-9\-/]{2,})", re.I
+    r"(?:单据编号|账单编号|发票号码|发票号|费用单号|单号)[\s|:]*([A-Z0-9][A-Z0-9\-/]{2,})", re.IGNORECASE
 )
 _CN_DATE = re.compile(
     r"(?:单据日期|账单日期|开票日期|费用日期)[\s|:]*(\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4})"
@@ -529,31 +532,31 @@ def extract_totals(text: str) -> tuple[float | None, float | None, float | None,
 # --------------------------------------------------------------------------- #
 _ID_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
     "mbl_no": (
-        re.compile(r"(?:MASTER\s+B/?L|M\.?B\.?L\.?|MASTER\s+BILL\s+OF\s+LADING)\s*(?:NO\.?|NUMBER|#)?\s*:?\s*([A-Z]{2,6}[0-9][A-Z0-9]{4,})", re.I),
+        re.compile(r"(?:MASTER\s+B/?L|M\.?B\.?L\.?|MASTER\s+BILL\s+OF\s+LADING)\s*(?:NO\.?|NUMBER|#)?\s*:?\s*([A-Z]{2,6}[0-9][A-Z0-9]{4,})", re.IGNORECASE),
     ),
     "hbl_no": (
-        re.compile(r"(?:HOUSE\s+B/?L|H\.?B\.?L\.?)\s*(?:NO\.?|NUMBER|#)?\s*:?\s*([A-Z]{2,6}[0-9][A-Z0-9]{4,})", re.I),
+        re.compile(r"(?:HOUSE\s+B/?L|H\.?B\.?L\.?)\s*(?:NO\.?|NUMBER|#)?\s*:?\s*([A-Z]{2,6}[0-9][A-Z0-9]{4,})", re.IGNORECASE),
     ),
     "booking_no": (
-        re.compile(r"(?:BOOKING\s*(?:NO\.?|NUMBER|#)|订舱号)\s*:?\s*([A-Z0-9][A-Z0-9\-]{4,})", re.I),
+        re.compile(r"(?:BOOKING\s*(?:NO\.?|NUMBER|#)|订舱号)\s*:?\s*([A-Z0-9][A-Z0-9\-]{4,})", re.IGNORECASE),
     ),
     "bl_no": (
-        re.compile(r"(?:B/?L\s*(?:NO\.?|NUMBER|#)|BILL\s+OF\s+LADING\s*(?:NO\.?|NUMBER|#))\s*:?\s*([A-Z0-9]{6,})", re.I),
+        re.compile(r"(?:B/?L\s*(?:NO\.?|NUMBER|#)|BILL\s+OF\s+LADING\s*(?:NO\.?|NUMBER|#))\s*:?\s*([A-Z0-9]{6,})", re.IGNORECASE),
         re.compile(r"\b((?:CMDU|MAEU|OOLU|MSCU|COSU|EGLV|HLCU|ONEY|YMLU|ZIMU|SUDU|TGHU)[A-Z0-9]{6,})\b"),
     ),
     "invoice_no": (
-        re.compile(r"(?:INVOICE|INV)\s*(?:NO\.?|NUMBER|#)\s*:?\s*([A-Z0-9][A-Z0-9\-/]{2,})", re.I),
+        re.compile(r"(?:INVOICE|INV)\s*(?:NO\.?|NUMBER|#)\s*:?\s*([A-Z0-9][A-Z0-9\-/]{2,})", re.IGNORECASE),
     ),
     "ams_no": (
-        re.compile(r"AMS\s*(?:NO\.?|NUMBER|#)?\s*:?\s*([A-Z0-9]{8,})", re.I),
+        re.compile(r"AMS\s*(?:NO\.?|NUMBER|#)?\s*:?\s*([A-Z0-9]{8,})", re.IGNORECASE),
     ),
     "agent_file_no": (
-        re.compile(r"AGENT\s+FILE\s*NO\.?\s*:?\s*([A-Z0-9][A-Z0-9\-/]{2,})", re.I),
+        re.compile(r"AGENT\s+FILE\s*NO\.?\s*:?\s*([A-Z0-9][A-Z0-9\-/]{2,})", re.IGNORECASE),
     ),
 }
 
 _CONTAINER_RE = re.compile(r"\b([A-Z]{3,4}\d{7})\b")
-_VESSEL_RE = re.compile(r"VESSEL\s*(?:NAME)?\s*:?\s*([A-Z0-9][A-Z0-9 .'\-/]{2,40})", re.I)
+_VESSEL_RE = re.compile(r"VESSEL\s*(?:NAME)?\s*:?\s*([A-Z0-9][A-Z0-9 .'\-/]{2,40})", re.IGNORECASE)
 
 
 def extract_identifiers(text: str, *, exclude: set[str] | None = None) -> DocumentIdentifiers:
@@ -892,7 +895,7 @@ def extract_document_rules(doc: RawDocument) -> ExtractedDocument:
 
 
 def _extract_payment_term(text: str) -> tuple[str | None, str | None]:
-    match = re.search(r"(?:TERMS?|PAY(?:MENT)?\s+TERM)\s*:?\s*([A-Z]{2,4})", text, re.I)
+    match = re.search(r"(?:TERMS?|PAY(?:MENT)?\s+TERM)\s*:?\s*([A-Z]{2,4})", text, re.IGNORECASE)
     if match:
         term = normalize_payment_term(match.group(1))
         if term:

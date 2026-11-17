@@ -26,7 +26,14 @@ from typing import Any
 from urllib.parse import quote
 
 from ..config import Settings
-from ..io_utils import ensure_dir, get_logger, read_json, sha256_file, truncate, write_json
+from ..io_utils import (
+    ensure_dir,
+    get_logger,
+    read_json,
+    sha256_file,
+    truncate,
+    write_json,
+)
 from ..models import RawTable
 
 logger = get_logger("ocr")

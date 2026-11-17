@@ -47,7 +47,7 @@ _AGENT_LOW_CONFIDENCE = 0.5
 
 
 def crosscheck_assessment(
-    owner: "BillingAgent",
+    owner: BillingAgent,
     assessment: RecordAssessment,
     doc: ExtractedDocument,
     charge: ChargeLine,
@@ -78,7 +78,7 @@ def crosscheck_assessment(
 
 
 def _rejection_reasons(
-    owner: "BillingAgent",
+    owner: BillingAgent,
     assessment: RecordAssessment,
     doc: ExtractedDocument,
     charge: ChargeLine,

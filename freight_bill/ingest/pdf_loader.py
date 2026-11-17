@@ -110,7 +110,7 @@ def parse_pdf(
                 warnings.append("PDF 无可读取文本，且 OCR 未返回内容")
     elif settings.ocr_mode in {"cache", "auto"}:
         # 文本层足够时，仍读取 OCR 缓存里的表格（若曾经识别过），用于结构化补强
-        cached = ocr_client._load_cache(sha)  # noqa: SLF001 - 同一模块族的受控访问
+        cached = ocr_client._load_cache(sha)
         if cached and cached.tables:
             tables.extend(cached.tables)
 

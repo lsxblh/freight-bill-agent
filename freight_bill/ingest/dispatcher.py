@@ -140,4 +140,4 @@ def collect_input_files(inputs: list[str | Path], recursive: bool = True) -> lis
     return unique
 
 
-__all__ = ["collect_input_files", "load_document", "SUPPORTED_EXTS"]
+__all__ = ["SUPPORTED_EXTS", "collect_input_files", "load_document"]

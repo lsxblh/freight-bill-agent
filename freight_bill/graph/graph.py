@@ -44,7 +44,7 @@ logger = get_logger("graph")
 RECURSION_LIMIT = 10000
 
 
-def build_billing_graph(owner: "BillingAgent"):
+def build_billing_graph(owner: BillingAgent):
     """装配并编译四段式骨架图。
 
     Args:
@@ -125,7 +125,7 @@ def build_billing_graph(owner: "BillingAgent"):
         force_ocr = state.get("repair_strategy") in ("ocr", "reextract")
         try:
             raw = load_with_retry(path, force_ocr=force_ocr)
-        except Exception as exc:  # noqa: BLE001 - 单文件失败不影响整批
+        except Exception as exc:
             entry.status = "failed"
             entry.error = f"{type(exc).__name__}: {exc}"
             logger.exception("解析失败: %s", path)
@@ -188,7 +188,7 @@ def build_billing_graph(owner: "BillingAgent"):
             documents = owner.extractor.extract(
                 state["raw"], feedback=state.get("repair_feedback")
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             entry.status = "failed"
             entry.error = f"extract: {type(exc).__name__}: {exc}"
             logger.exception("抽取失败: %s", path)
@@ -225,7 +225,7 @@ def build_billing_graph(owner: "BillingAgent"):
         }
         try:
             assessment = synthesize_charge(owner, payload, raw=state.get("raw"))
-        except Exception as exc:  # noqa: BLE001 - 单条费用失败不影响其余费用
+        except Exception as exc:
             logger.exception("记录装配失败: %s", state["path"])
             return {
                 "doc_issues": doc_issues,

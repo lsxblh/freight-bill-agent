@@ -39,7 +39,7 @@ class FakeOcrClient:
 
     def _load_cache(self, sha: str) -> None:
         """PDF 文本层足够时会查缓存补表格；假客户端一律无缓存。"""
-        return None
+        return
 
 
 class FakeLlmExtractor:

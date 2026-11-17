@@ -6,10 +6,10 @@ from .dispatcher import SUPPORTED_EXTS, collect_input_files, load_document
 from .ocr_client import OcrClient, OcrError, OcrOutcome
 
 __all__ = [
+    "SUPPORTED_EXTS",
     "OcrClient",
     "OcrError",
     "OcrOutcome",
-    "SUPPORTED_EXTS",
     "collect_input_files",
     "load_document",
 ]

@@ -125,4 +125,4 @@ def parse_word(
     )
 
 
-__all__ = ["parse_word", "WORD_EXTS"]
+__all__ = ["WORD_EXTS", "parse_word"]

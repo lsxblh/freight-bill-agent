@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 __version__ = "1.0.0"
-__all__ = ["__version__", "BillingAgent", "Settings"]
+__all__ = ["BillingAgent", "Settings", "__version__"]
 
 
 def __getattr__(name: str):  # 延迟导入，避免导入包时就拉起重依赖

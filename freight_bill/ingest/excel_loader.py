@@ -107,4 +107,4 @@ def parse_excel(path: Path, *, ocr_client: OcrClient, role: str = "primary") -> 
     )
 
 
-__all__ = ["parse_excel", "EXCEL_EXTS"]
+__all__ = ["EXCEL_EXTS", "parse_excel"]

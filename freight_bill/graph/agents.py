@@ -350,7 +350,7 @@ def _annotate_agent(assessment: RecordAssessment, proposal: Proposal) -> None:
 
 
 def synthesize_charge(
-    owner: "BillingAgent", payload: dict[str, Any], *, raw: RawDocument | None
+    owner: BillingAgent, payload: dict[str, Any], *, raw: RawDocument | None
 ) -> RecordAssessment:
     """第三段综合入口：agent 激活走 ReAct 提案+死规则装配，否则走确定性链。
 
@@ -389,7 +389,7 @@ def synthesize_charge(
         )
         _annotate_agent(assessment, proposal)
         return assessment
-    except Exception:  # noqa: BLE001 - agent 异常不拖垮单条费用，回落确定性链
+    except Exception:
         logger.exception("综合 agent 装配失败，回落确定性入账链: %s", doc.effective_reference())
         assessment = owner.record_chain.invoke(payload)
         # 票09：回落留痕（additive，不改六字段）——生产可区分真 agent 与静默回落。
@@ -398,9 +398,9 @@ def synthesize_charge(
 
 
 __all__ = [
+    "MAX_ROUNDS",
     "ChatAgentLlm",
     "ComprehensiveAgent",
-    "MAX_ROUNDS",
     "Proposal",
     "synthesize_charge",
 ]

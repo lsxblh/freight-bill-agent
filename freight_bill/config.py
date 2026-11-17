@@ -158,7 +158,7 @@ class Settings:
         return tuple(a for a in aliases if a)
 
     @classmethod
-    def from_env(cls, **overrides) -> "Settings":
+    def from_env(cls, **overrides) -> Settings:
         """从环境变量构造，再叠加显式覆盖项。"""
         settings = cls(
             ocr_url=_env("OCR_API_URL", DEFAULT_OCR_URL) or DEFAULT_OCR_URL,
@@ -190,9 +190,9 @@ class Settings:
             settings = replace(settings, **{k: v for k, v in overrides.items() if v is not None})
         return settings
 
-    def with_overrides(self, **overrides) -> "Settings":
+    def with_overrides(self, **overrides) -> Settings:
         clean = {k: v for k, v in overrides.items() if v is not None}
         return replace(self, **clean) if clean else self
 
 
-__all__ = ["Settings", "PROJECT_ROOT", "DEFAULT_DATA_DIR"]
+__all__ = ["DEFAULT_DATA_DIR", "PROJECT_ROOT", "Settings"]

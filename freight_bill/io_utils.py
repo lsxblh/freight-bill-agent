@@ -6,9 +6,10 @@ import hashlib
 import json
 import logging
 import re
+from collections.abc import Iterable
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 LOGGER_NAME = "freight_bill"
 
@@ -74,7 +75,7 @@ OCR_DIGIT_CONFUSION = {"O": "0", "o": "0", "D": "0", "Q": "0", "I": "1", "l": "1
 class ParsedNumber:
     """一次数字解析的结果，附带是否发生过 OCR 纠错。"""
 
-    __slots__ = ("value", "raw", "repaired", "ok")
+    __slots__ = ("ok", "raw", "repaired", "value")
 
     def __init__(self, value: float | None, raw: str, repaired: bool = False) -> None:
         self.value = value

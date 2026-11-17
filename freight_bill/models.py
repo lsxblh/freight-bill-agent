@@ -57,12 +57,12 @@ class RawDocument(BaseModel):
     pages: list[str] = Field(default_factory=list)
     tables: list[RawTable] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
-    attachments: list["RawDocument"] = Field(default_factory=list)
+    attachments: list[RawDocument] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     ocr_source: str | None = None
     ocr_confidence: float | None = None
 
-    def iter_documents(self) -> list["RawDocument"]:
+    def iter_documents(self) -> list[RawDocument]:
         out: list[RawDocument] = [self]
         for att in self.attachments:
             out.extend(att.iter_documents())
