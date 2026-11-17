@@ -16,13 +16,13 @@
 ## 二、欠的债（待处理）
 
 - `[待处理]` **交付**（题目硬要求）：git 无 remote、未推送、未打 zip、未发邮件（LUKA@PLTPLT.COM / pan@pltplt.com，标题"应聘渠道+姓名+应聘岗位"）。实现完成后必须做。
-- `[待处理]` 票05：audit_trail 补数量/单价/小计/税额 + 原文片段 inline；尾巴落账前钱关键项确定性交叉验证。
-- `[待处理]` 票06：综合 agent 必需 key 不降级 + 配置收口 + 新旧评测对比（真模型质量验证，离线假实现只证结构不证质量）。
-- `[待处理]` 文档债：`docs/ARCHITECTURE.md`/`HARNESS.md`/`DESIGN_THINKING.md`/`ACCEPTANCE.md` 仍描述旧确定性流水线，与 v2 四段+综合 agent 脱节；`docs/adr/0001-...md` 已取代 11-07 旧 ADR 但四份文档未同步。
-- `[待处理]` README 测试数过期：称 89，实际票02 后 96 且随票增长。
+- `[已修]` 票05：audit_trail 补数量/单价/小计/税额 + 原文片段 inline；尾巴落账前钱关键项确定性交叉验证。
+- `[已修]` 票06：综合 agent 必需 key 不降级 + 配置收口 + 新旧评测对比（真模型质量验证，离线假实现只证结构不证质量）。
+- `[已修]` 文档债：`ARCHITECTURE.md` 已重写 v2 四段+综合 agent；`ACCEPTANCE.md`/`HARNESS.md` 的测试数(137)、LangChain 指向(extract/graph)、熔断表述(改失败上限+回落)已同步；`DESIGN_THINKING.md` 为业务/技术思考仍适用；`docs/adr/0001-...md` 已取代 11-07 旧 ADR。
+- `[已修]` README 测试数过期：已更新为 137（随票增长的历史数字不再残留）。
 - `[待处理]` `.gitignore` 未覆盖 `pytest-cache-files-*`/`.pytest_tmp` 残留副产物；交付 zip 前需清理或补忽略，且**确认 zip 不含 `.env`**（真 key 在内，`.gitignore:12` 已忽略但 zip 不走 gitignore）。
 - `[待处理]` `llm_extractor.py:110` `ChatOpenAI(max_retries=N)` × `:142` 外层 `range(N+1)` 双层重试叠乘，失败时请求数放大；应只留一层。
-- `[待处理]` 死代码：`harness` 的 `ContentCache`/`CircuitBreaker`/`stable_key` 零调用；`ledger.py:116 by_reference`/`:122 candidate_lines` 零调用。删需确认（见拍板清单）。
+- `[已修]` 死代码：已删 `harness/cache.py`(ContentCache/stable_key)、`resilience.py` CircuitBreaker、`ledger.py` by_reference、`agent.py` build_document_chain 兼容再导出、`pipeline_utils.py` 未用的 factors 解包。纠正：`candidate_lines` 实为活代码（graph/tools.py 在用），保留。
 
 ## 三、未来改进方向（候选，多数需拍板）
 
