@@ -4,7 +4,7 @@
 
 **Blocked by:** 00
 
-**Status:** ready-for-agent
+**Status:** done (commits 957fac6+27265bd, 92 passed, merged)
 
 - [x] LLM 与 OCR 客户端可从主缝（入口参数/Settings）注入，编排层不再自行硬造
 - [x] 编排层与抽取器的循环依赖消除

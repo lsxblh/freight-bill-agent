@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done (commits 3921fa0+def8360, 102 passed, merged)
 
 - [x] 综合 agent 以 ReAct 循环自主调工具，产提案+理由+置信度，不直接落账
 - [x] 四级匹配做成确定性工具被 agent 调用，返回认没认出/哪条/第几级

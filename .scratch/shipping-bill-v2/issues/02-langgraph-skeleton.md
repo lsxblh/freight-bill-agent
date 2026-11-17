@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done (commits 46c3346+0a1fda6, 96 passed, merged)
 
 - [x] 内部编排为 LangGraph StateGraph，四段骨架就位，条件边预留
 - [x] 对外入口签名与结果形状不变
