@@ -8,6 +8,10 @@
          → 记账方向（AR/AP）
          → 增量写入台账
          → 标准 JSON + 审计链 + 运行报告
+
+票02 起内部编排为四段式 LangGraph StateGraph（读进来 → 双路抽取 →
+综合 → 尾巴，见 shipping_billing.graph），本模块是图的薄封装：
+批次循环、运行日志、汇总与输出。
 """
 
 from __future__ import annotations
@@ -22,15 +26,16 @@ from .agent import build_record_chain
 from .config import Settings
 from .extract.document_extractor import DocumentExtractor
 from .extract.llm_extractor import LlmExtractor
+from .graph import build_billing_graph
+from .graph.graph import RECURSION_LIMIT
 from .harness.report import build_markdown, write_markdown
-from .harness.resilience import retry
 from .harness.runlog import FileLog, RunLog
-from .ingest import OcrClient, collect_input_files, load_document
+from .ingest import OcrClient, collect_input_files
 from .io_utils import get_logger, write_json
 from .matching.ledger import BillLine, Ledger, norm_key
 from .models import ExtractedDocument, OutputRecord
 from .pipeline_utils import RecordAssessment
-from .validation.validators import Issue, summarize, validate_document
+from .validation.validators import Issue, summarize
 
 logger = get_logger("pipeline")
 
@@ -84,8 +89,19 @@ class BillingAgent:
         self.record_chain = build_record_chain(
             {"ledger": self.ledger, "settings": self.settings}
         )
+        self._graph = None
         self._doc_bill_ids: dict[int, str] = {}
         self._duplicates: dict[tuple, str] = {}
+
+    # ------------------------------------------------------------------ #
+    def graph(self):
+        """四段式 StateGraph（懒编译）：读进来 → 双路抽取 → 综合 → 尾巴。
+
+        票02 起内部编排走图；节点仍为死规则，行为与旧循环一致。
+        """
+        if self._graph is None:
+            self._graph = build_billing_graph(self)
+        return self._graph
 
     # ------------------------------------------------------------------ #
     def run(self, inputs: Sequence[str | Path]) -> PipelineResult:
@@ -100,83 +116,23 @@ class BillingAgent:
         self._doc_bill_ids.clear()
         self._duplicates.clear()
 
-        load_with_retry = retry(times=2, base_delay=0.4, logger=logger)(
-            lambda path: load_document(
-                path, ocr_client=self.ocr, work_dir=self.settings.work_dir
-            )
-        )
-
+        graph = self.graph()
         for path in files:
             entry = FileLog(file=path.name)
             file_started = time.perf_counter()
-            try:
-                raw = load_with_retry(path)
-            except Exception as exc:  # noqa: BLE001 - 单文件失败不影响整批
-                entry.status = "failed"
-                entry.error = f"{type(exc).__name__}: {exc}"
-                entry.duration_ms = int((time.perf_counter() - file_started) * 1000)
-                run_log.add_file(entry)
-                run_log.bump("files_failed")
-                result.failures.append({"file": path.name, "stage": "ingest", "error": entry.error})
-                logger.exception("解析失败: %s", path)
-                continue
-
-            entry.kind = raw.kind
-            entry.ocr_source = raw.ocr_source
-            entry.warnings = list(raw.warnings)
-
-            try:
-                documents = self.extractor.extract(raw)
-            except Exception as exc:  # noqa: BLE001
-                entry.status = "failed"
-                entry.error = f"extract: {type(exc).__name__}: {exc}"
-                entry.duration_ms = int((time.perf_counter() - file_started) * 1000)
-                run_log.add_file(entry)
-                run_log.bump("files_failed")
-                result.failures.append({"file": path.name, "stage": "extract", "error": entry.error})
-                logger.exception("抽取失败: %s", path)
-                continue
-
-            entry.documents = len(documents)
-            for doc in documents:
-                result.documents.append(doc)
-                doc_issues = validate_document(
-                    doc, tolerance_ratio=self.settings.total_tolerance_ratio
-                )
-                for charge in doc.charges:
-                    duplicate_of = self._lookup_duplicate(doc, charge)
-                    payload = {
-                        "document": doc,
-                        "charge": charge,
-                        "doc_issues": doc_issues,
-                        "duplicate_of": duplicate_of,
-                        "settings": self.settings,
-                    }
-                    try:
-                        assessment: RecordAssessment = self.record_chain.invoke(payload)
-                    except Exception as exc:  # noqa: BLE001
-                        logger.exception("记录装配失败: %s", path)
-                        result.failures.append(
-                            {
-                                "file": path.name,
-                                "stage": "assemble",
-                                "error": f"{type(exc).__name__}: {exc}",
-                                "charge": charge.charge_item,
-                            }
-                        )
-                        continue
-                    self._apply_to_ledger(assessment, doc, charge)
-                    self._register_duplicate(doc, charge, assessment)
-                    result.records.append(assessment.record)
-                    result.assessments.append(assessment)
-                    entry.records += 1
-                    entry.operations[assessment.operation] = (
-                        entry.operations.get(assessment.operation, 0) + 1
-                    )
-
+            # 单文件走四段式图；失败隔离与逐条落账都在图内完成，
+            # 这里只收拢结果、计时并登记运行日志。
+            final = graph.invoke(
+                {"path": path, "entry": entry},
+                config={"recursion_limit": RECURSION_LIMIT},
+            )
+            result.documents.extend(final.get("documents") or [])
+            result.records.extend(final.get("records") or [])
+            result.assessments.extend(final.get("assessments") or [])
+            result.failures.extend(final.get("failures") or [])
             entry.duration_ms = int((time.perf_counter() - file_started) * 1000)
             run_log.add_file(entry)
-            run_log.bump("files_ok")
+            run_log.bump("files_failed" if entry.status == "failed" else "files_ok")
 
         run_log.stop()
 
