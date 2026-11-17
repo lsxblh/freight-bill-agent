@@ -4,7 +4,7 @@
 
 **Blocked by:** 03, 04, 05
 
-**Status:** done
+**Status:** done (commits aff4235+f199cf1, 126 passed/1 deselected, merged)
 
 - [x] 综合 agent 无 key 明确报错，不静默降级
 - [x] 配置含 JUDGE_MODEL/重试上限/必需 key 开关

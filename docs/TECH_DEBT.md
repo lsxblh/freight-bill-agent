@@ -73,3 +73,12 @@
 - 欠债/候选：_MONEY_ISSUE_CODES 含上游已阻断的 AMOUNT_MISSING/CURRENCY_INVALID，属有意独立复核、略冗余；方向复查"仅确定矛盾才拦"、规则拿不准不覆盖 agent 疑难——如需更强方向把关属行为变更、需拍板。
 - 语义：rules.extract_totals 命中 TOTAL 模式即 subtotal/tax=None，真实样例全 None 属正常非 bug。
 - 票06 注意：改综合 agent 默认启用/必需 key 会改默认行为，须显式更新评测预期；ChatAgentLlm 已就位（票04）直接接。
+
+### 票06 必需 key + 配置 + 评测 + 文档（126 绿/1 deselected，已 merge，六票全部完成）
+- 落地：`config.py:105-111` agent_required_key 数据类缺省 False、`:180` from_env 缺省 True（拍板 Q1=A 两层缺省）；`pipeline.py:46-53` MissingAgentKeyError、`:109/:124-158` _resolve_agent_llm 构造期把关（命脉无 key 无注入→报错；有 key→自动启用 ChatAgentLlm；注入禁用实现→拒绝）；`cli.py:158-161` cmd_eval 钉住 with_overrides(agent_required_key=False, llm_enabled=False)、`:260-265` 捕获报错退出码 2；`pyproject.toml:39-44` addopts="-q -m 'not e2e'"+e2e marker；新增 tests/test_required_key.py 8 条 + tests/test_e2e_real_agent.py 1 条（真模型、无 key skip、指标落盘 e2e_metrics.json）；README/ARCHITECTURE 重写 v2。
+- 拍板：Q1=A（from_env 缺省命脉 true/数据类 false）；Q2=离线确定性当 7/7 闸门 + 真模型 e2e 宽松证据（用户："离线的测试是肯定需要的，我也需要端到端的测试"）。
+- 【质量债·需拍板】真模型 qwen3.8-flash e2e（4 样例、25m34s）：recall 1.0/precision 1.0 但 operation_accuracy 0.4286/posting_accuracy 0.5；NO_CHANGE↔UPDATE 语义混淆 + debit note 方向推理弱，2 条被尾巴交叉验证拦成 PENDING_REVIEW（兜底生效）。改进=强化 synthesize 提示词 operation 语义/方向 few-shot 或换更强模型，属行为变更需拍板。e2e 数字不当回归基线（基线=离线 eval 7/7）。
+- 【候选改进·需拍板】ChatAgentLlm 无响应缓存，e2e 每次 25-27 分钟且依赖端点；可加 agent 响应缓存缝（类比 llm_cache_dir）使 e2e 可回放。
+- 流程坑：子代理结束 turn 会连带杀后台 job→长任务必须 job_output wait 阻塞保持 turn 活跃；pytest 通过时丢弃捕获 stdout→证据型测试要落盘结果（e2e_metrics.json）。
+- 端点：tokenrhythm.studio 探针 1.32s、实跑单次分钟级，e2e 时间预算按 30 分钟+。
+- 下一入口注意：任何经 from_env 构造 BillingAgent 而无 key 会构造即报错；离线场景显式 AGENT_REQUIRED_KEY=false 或注入假 agent_llm；cmd_eval 的 with_overrides 钉住别删。
