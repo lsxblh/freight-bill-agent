@@ -3,8 +3,9 @@
 职责边界（对应 GLOSSARY"解析补救 agent"）：
 * 软失败（读出了文字但不够干净）时，自己决定换哪种解析策略，回到"读进来"重走：
   - 文本层空 / OCR 数字混淆 / 置信度低 → 强制重 OCR（``ocr``）；
-  - 其余（如裁判判负的边界 case）→ 带反馈重抽（``reextract``），把闸门原因带进
-    下一轮的运行日志，供审计与人工复核。
+  - 其余（如裁判判负的边界 case）→ 带反馈重抽（``reextract``）：同样强制
+    重 OCR 换路重读，并把闸门原因喂进 LLM 草稿提示（票08），使重试与首次
+    真正不同；原因同时留痕运行日志，供审计与人工复核。
 * 重试次数由图的条件边把关（≤ settings.ingest_max_retries）；本 agent 只负责
   "选策略"，不自己计数、不落账。
 * 重试耗尽或完全读不出 → 由图调用 ``build_pending_review_record`` 产出一条
@@ -19,7 +20,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..config import Settings
-from ..io_utils import get_logger
 from ..models import (
     AuditTrail,
     ChargeDetails,
@@ -31,8 +31,6 @@ from ..models import (
 )
 from ..pipeline_utils import RecordAssessment
 from .judge import compute_metrics
-
-logger = get_logger("repair")
 
 
 @dataclass
@@ -49,16 +47,20 @@ class RepairPlan:
 
 
 class RepairAgent:
-    """解析补救 agent：按代码指标自主选策略。可注入（假 OCR 驱动离线验证）。"""
+    """解析补救 agent：按代码指标自主选策略。可注入（假 OCR 驱动离线验证）。
+
+    只负责"选策略"，不直接读文件：换路重读由图 ingest 经 load_document
+    执行（使用编排器注入的同一 OCR 客户端），离线可回放。
+    """
 
     def __init__(self, ocr_client, settings: Settings) -> None:
         """Args:
-            ocr_client: OCR 客户端（真实或注入的假客户端）。
+            ocr_client: OCR 客户端注入占位（保持主缝构造签名兼容）。重读
+                由图 ingest 统一执行，本 agent 不直接读取，故不再留存
+                （票08 清理：原 self.ocr 只存不读）。
             settings: 运行配置。
         """
-        self.ocr = ocr_client
         self.settings = settings
-        self.stats = {"repairs": 0, "ocr": 0, "reextract": 0}
 
     def plan(self, raw: RawDocument, gate_reason: str) -> RepairPlan:
         """按原件指标自主选补救策略。
@@ -71,17 +73,13 @@ class RepairAgent:
             补救策略。
         """
         metrics = compute_metrics(raw)
-        self.stats["repairs"] += 1
         if metrics.text_chars == 0 and not metrics.has_tables:
-            self.stats["ocr"] += 1
             return RepairPlan("ocr", "文本层为空，改走 OCR 重读")
         if metrics.corrupt_amounts or (
             metrics.ocr_confidence is not None
             and metrics.ocr_confidence < self.settings.gate_min_confidence
         ):
-            self.stats["ocr"] += 1
             return RepairPlan("ocr", "OCR 数字混淆/置信度低，重 OCR 该件")
-        self.stats["reextract"] += 1
         return RepairPlan("reextract", f"带反馈重抽：{gate_reason}")
 
 

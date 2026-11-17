@@ -35,6 +35,8 @@ class BillingState(TypedDict, total=False):
         gate_reason: 闸门最近一次不放行的原因（补救反馈 / PENDING_REVIEW）。
         retries: 解析补救已换路重试的次数（0=未补救；条件边据此把关 ≤2）。
         repair_strategy: 本轮补救策略（ocr/reextract），回到 ingest 时消费。
+        repair_feedback: 补救时携带的闸门失败原因（reextract 策略），供抽取
+            作为 LLM 草稿反馈；gate 放行会清空 gate_reason，故单独留存。
     """
 
     path: Path
@@ -52,6 +54,7 @@ class BillingState(TypedDict, total=False):
     gate_reason: str | None
     retries: int
     repair_strategy: str | None
+    repair_feedback: str | None
 
 
 __all__ = ["BillingState"]

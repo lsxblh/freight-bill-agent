@@ -36,7 +36,15 @@ def llm_node_factory(llm: LlmExtractor | None):
         raw: RawDocument = payload["raw"]
         if llm is None or not llm.enabled:
             return {**payload, "llm": None}
-        result = llm.extract(raw.text, filename=raw.filename, kind=raw.kind)
+        feedback = payload.get("feedback")
+        if feedback:
+            # 票08：补救重试把闸门原因喂进 LLM 草稿提示。仅在有反馈时传
+            # feedback 关键字，兼容只接受基础签名的注入假实现。
+            result = llm.extract(
+                raw.text, filename=raw.filename, kind=raw.kind, feedback=feedback
+            )
+        else:
+            result = llm.extract(raw.text, filename=raw.filename, kind=raw.kind)
         return {**payload, "llm": result}
 
     return _node
@@ -167,13 +175,24 @@ class DocumentExtractor:
             self._chain = build_document_chain(self.llm)
         return self._chain
 
-    def extract_one(self, raw: RawDocument) -> ExtractedDocument:
-        payload = self.chain().invoke({"raw": raw})
+    def extract_one(
+        self, raw: RawDocument, *, feedback: str | None = None
+    ) -> ExtractedDocument:
+        """抽取单份原件。feedback 为补救重试携带的闸门原因（票08），进 LLM 草稿。"""
+        payload = self.chain().invoke({"raw": raw, "feedback": feedback})
         return payload if isinstance(payload, ExtractedDocument) else normalize_node(payload)
 
-    def extract(self, raw: RawDocument) -> list[ExtractedDocument]:
-        """返回 [主单据, 附件中可独立成账的单据...]。"""
-        primary = self.extract_one(raw)
+    def extract(
+        self, raw: RawDocument, *, feedback: str | None = None
+    ) -> list[ExtractedDocument]:
+        """返回 [主单据, 附件中可独立成账的单据...]。
+
+        Args:
+            raw: 读进来的原件。
+            feedback: 闸门失败原因（补救重试反馈，票08）；只作用于主单据的
+                LLM 草稿，附件抽取不带反馈。None 时行为与首次抽取一致。
+        """
+        primary = self.extract_one(raw, feedback=feedback)
         attachment_docs: list[ExtractedDocument] = []
         for child in raw.attachments:
             child_doc = self.extract_one(child)

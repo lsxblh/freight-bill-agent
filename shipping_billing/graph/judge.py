@@ -195,7 +195,6 @@ class LlmJudge:
             settings.judge_enabled and settings.judge_model and settings.llm_api_key
         )
         self._chain = None
-        self.stats = {"calls": 0, "failures": 0}
 
     def _build(self):
         if self._chain is not None:
@@ -242,8 +241,10 @@ class LlmJudge:
         if not self.enabled:
             return JudgeDecision(True, "裁判未启用")
         try:
-            self.stats["calls"] += 1
-            response = self._chain.invoke(
+            # 票08：必须经 _build() 取链（首次懒建链并缓存）。此前直调
+            # self._chain.invoke 而 _chain 恒 None，启用即 AttributeError
+            # 被下方捕获→永远"故障退化放行"，真裁判从未生效。
+            response = self._build().invoke(
                 {
                     "metrics": json.dumps(metrics.__dict__, ensure_ascii=False),
                     "text": truncate(raw.text or "", 6000),
@@ -256,7 +257,6 @@ class LlmJudge:
                 reason=str(payload.get("reason", "")),
             )
         except Exception as exc:  # noqa: BLE001 - 裁判故障退化为放行
-            self.stats["failures"] += 1
             logger.warning("裁判调用失败，退化为放行: %s", exc)
             return JudgeDecision(True, f"裁判故障退化放行: {exc}")
 

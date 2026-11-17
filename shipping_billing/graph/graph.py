@@ -116,12 +116,13 @@ def build_billing_graph(owner: "BillingAgent"):
     def ingest(state: BillingState) -> dict[str, Any]:
         """段1 读进来：解析文件（EML/PDF/图片/Excel/Word，附件递归，带重试）。
 
-        补救循环回来时消费 repair_strategy：ocr → 强制重 OCR。硬失败（完全
-        读不出）→ 产出一条 PENDING_REVIEW 记录，不拿垃圾跑下游。
+        补救循环回来时消费 repair_strategy：ocr 与 reextract 都强制重 OCR
+        （换路重读，走 OCR 网关），保证重试与首次读取真正不同（票08）。
+        硬失败（完全读不出）→ 产出一条 PENDING_REVIEW 记录，不拿垃圾跑下游。
         """
         path = state["path"]
         entry = state["entry"]
-        force_ocr = state.get("repair_strategy") == "ocr"
+        force_ocr = state.get("repair_strategy") in ("ocr", "reextract")
         try:
             raw = load_with_retry(path, force_ocr=force_ocr)
         except Exception as exc:  # noqa: BLE001 - 单文件失败不影响整批
@@ -147,7 +148,11 @@ def build_billing_graph(owner: "BillingAgent"):
         return {"gate_passed": verdict.passed, "gate_reason": verdict.reason or None}
 
     def repair(state: BillingState) -> dict[str, Any]:
-        """解析补救：自主换策略并计数，回到 ingest 重走（票03，重试≤上限）。"""
+        """解析补救：自主换策略并计数，回到 ingest 重走（票03，重试≤上限）。
+
+        reextract 策略把闸门失败原因留存为 repair_feedback（票08）：gate 放行
+        时会清空 gate_reason，故在此单独携带，供 extract 喂进 LLM 草稿提示。
+        """
         plan = owner.repair.plan(state["raw"], state.get("gate_reason") or "")
         retries = state.get("retries", 0) + 1
         entry = state["entry"]
@@ -157,7 +162,12 @@ def build_billing_graph(owner: "BillingAgent"):
         logger.info(
             "补救 %s: 策略=%s 重试=%d", state["path"].name, plan.strategy, retries
         )
-        return {"retries": retries, "repair_strategy": plan.strategy}
+        feedback = state.get("gate_reason") if plan.strategy == "reextract" else None
+        return {
+            "retries": retries,
+            "repair_strategy": plan.strategy,
+            "repair_feedback": feedback,
+        }
 
     def pending_review(state: BillingState) -> dict[str, Any]:
         """重试耗尽：产出 PENDING_REVIEW（含原因），不拿垃圾跑下游（票03）。"""
@@ -173,7 +183,11 @@ def build_billing_graph(owner: "BillingAgent"):
         path = state["path"]
         entry = state["entry"]
         try:
-            documents = owner.extractor.extract(state["raw"])
+            # 票08：补救重试携带的闸门原因作为抽取反馈（LLM 草稿提示），
+            # 首次放行时 repair_feedback 为 None，抽取行为不变。
+            documents = owner.extractor.extract(
+                state["raw"], feedback=state.get("repair_feedback")
+            )
         except Exception as exc:  # noqa: BLE001
             entry.status = "failed"
             entry.error = f"extract: {type(exc).__name__}: {exc}"

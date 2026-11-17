@@ -68,7 +68,7 @@ USER_PROMPT = """请从下面的单据文本中抽取结构化费用信息。
 
 ===== 单据文本（可能来自 OCR，存在识别噪声）=====
 {text}
-
+{feedback}
 ===== 输出要求 =====
 严格按以下 JSON Schema 输出**一个 JSON 对象**，不要输出任何解释性文字：
 {schema}
@@ -112,7 +112,24 @@ class LlmExtractor:
         self._chain = prompt | model | parser
         return self._chain
 
-    def extract(self, text: str, *, filename: str, kind: str) -> LlmDocument | None:
+    def extract(
+        self,
+        text: str,
+        *,
+        filename: str,
+        kind: str,
+        feedback: str | None = None,
+    ) -> LlmDocument | None:
+        """抽取单份单据文本。
+
+        Args:
+            text: 原件文本。
+            filename: 文件名（缓存键与提示词上下文）。
+            kind: 来源类型。
+            feedback: 补救重试携带的闸门失败原因（票08）。非空时作为
+                "上次解析闸门反馈"段喂进草稿提示，并计入缓存键——带反馈的
+                重试不会命中首次抽取的缓存，保证重试与首次真正不同。
+        """
         if not self.enabled:
             return None
         if not text or not text.strip():
@@ -124,9 +141,11 @@ class LlmExtractor:
         # 控制上下文长度，避免超长 PDF 把费用表挤掉
         max_chars = 12000
         clipped = text if len(text) <= max_chars else text[:max_chars] + "\n...[truncated]"
-        key = hashlib.sha256(
-            f"{self.settings.llm_model}|{filename}|{clipped}".encode("utf-8")
-        ).hexdigest()
+        key_material = f"{self.settings.llm_model}|{filename}|{clipped}"
+        if feedback:
+            # 反馈参与缓存键：同一文本带不同反馈视为不同请求；无反馈时键不变。
+            key_material += f"|feedback={feedback}"
+        key = hashlib.sha256(key_material.encode("utf-8")).hexdigest()
 
         cache_path = self.cache_dir / f"{key}.json"
         cached = read_json(cache_path, None)
@@ -138,6 +157,15 @@ class LlmExtractor:
                 pass
 
         chain = self._build()
+        # 票08：闸门反馈段。无反馈时渲染为空串，提示词与首次抽取完全一致。
+        feedback_block = (
+            "===== 上次解析闸门反馈（本次为重试抽取，请重点避免以下问题）=====\n"
+            f"{feedback}\n"
+            if feedback
+            else ""
+        )
+        if feedback:
+            logger.info("LLM 抽取携带闸门反馈 %s: %s", filename, truncate(feedback, 120))
         last_error: Exception | None = None
         for attempt in range(1, self.settings.llm_max_retries + 2):
             try:
@@ -148,6 +176,7 @@ class LlmExtractor:
                         "filename": filename,
                         "kind": kind,
                         "text": clipped,
+                        "feedback": feedback_block,
                         "schema": schema_text,
                     }
                 )
