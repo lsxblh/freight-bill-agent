@@ -27,6 +27,7 @@ from ..ingest import load_document
 from ..io_utils import get_logger
 from ..validation.validators import validate_document
 from .agents import synthesize_charge
+from .crosscheck import crosscheck_assessment
 from .state import BillingState
 
 if TYPE_CHECKING:
@@ -144,8 +145,9 @@ def build_billing_graph(owner: "BillingAgent"):
     def tail(state: BillingState) -> dict[str, Any]:
         """段4 死规则尾巴：把关落账。
 
-        提案可用 → 落账 + 登记重复 + 收集记录；装配失败 → 记 assemble
-        失败并跳过该条。票05 将在落账前加钱关键项确定性交叉验证。
+        提案可用 → 落账前钱关键项确定性交叉验证（票05，复用校验/认亲/
+        四要素）→ 通过才落账 + 登记重复 + 收集记录；任一不一致/不可信 →
+        降级 PENDING_REVIEW，错提案不落账。装配失败 → 记 assemble 失败并跳过。
         """
         doc, charge = state["queue"][0]
         entry = state["entry"]
@@ -163,6 +165,8 @@ def build_billing_graph(owner: "BillingAgent"):
                 }
             )
         else:
+            # 票05：落账前对钱关键项确定性交叉验证，对确定性/agent 两路一致生效。
+            assessment = crosscheck_assessment(owner, assessment, doc, charge)
             owner._apply_to_ledger(assessment, doc, charge)
             owner._register_duplicate(doc, charge, assessment)
             records.append(assessment.record)
