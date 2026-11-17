@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.pytest_tmp/
+pytest-cache-files-*/
+.codegraph/
+.venv/
+venv/
+.env
+.work/
+output/
+.DS_Store
+Thumbs.db
+*.zip

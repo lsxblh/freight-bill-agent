@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>航运账单 Agent · 四段式干净版</title>
+<style>
+  :root{
+    --bg:#0b1120; --panel:#111a2e; --panel2:#0f1626; --line:#22304d;
+    --txt:#e6edf7; --muted:#93a4c3; --dim:#6b7a99;
+    --keep:#10b981; --keep-bg:#06281e;
+    --agent:#22d3ee; --agent-bg:#062a33;
+    --tail:#f59e0b; --tail-bg:#2b1d05;
+    --human:#fb7185; --human-bg:#2b0a12;
+    --accent:#7dd3fc;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;line-height:1.65}
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px 70px}
+  header{padding:42px 0 6px}
+  h1{font-size:29px;margin:0 0 8px}
+  .sub{color:var(--muted);font-size:15px;max-width:760px}
+  .principle{margin:20px 0;border:1px solid var(--agent);background:var(--agent-bg);
+    border-radius:14px;padding:16px 20px;font-size:16px}
+  .principle b{color:var(--agent)}
+  h2{font-size:20px;margin:38px 0 10px}
+  .stage{border:1px solid var(--line);border-radius:16px;background:var(--panel);
+    margin:0 0 6px;overflow:hidden}
+  .shead{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--panel2);
+    border-bottom:1px solid var(--line)}
+  .sno{width:30px;height:30px;border-radius:8px;background:#0a1322;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);flex:none}
+  .shead h3{margin:0;font-size:17px}
+  .shead .tag{margin-left:auto;font-size:12px;color:var(--dim)}
+  .sbody{padding:16px 20px}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0}
+  .node{border:1px solid var(--keep);background:var(--keep-bg);color:var(--txt);
+    border-radius:10px;padding:8px 14px;font-size:14px}
+  .node.agent{border-color:var(--agent);background:var(--agent-bg)}
+  .node.tail{border-color:var(--tail);background:var(--tail-bg)}
+  .node.human{border-color:var(--human);background:var(--human-bg)}
+  .node.big{font-size:16px;font-weight:700;padding:12px 18px}
+  .arr{color:var(--dim);font-size:18px}
+  .lbl{font-size:12px;color:var(--dim)}
+  .down{ text-align:center;color:var(--dim);font-size:22px;margin:2px 0}
+  .note{font-size:13px;color:var(--muted);margin-top:8px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .box{border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:14px 16px}
+  .box h4{margin:0 0 8px;font-size:15px}
+  .box p,.box li{font-size:13.5px;color:var(--muted);margin:4px 0}
+  .box ul{margin:6px 0;padding-left:18px}
+  .box code{background:#0a1322;border:1px solid var(--line);border-radius:5px;padding:1px 6px;
+    font-size:12px;color:#a5d8ff;font-family:Consolas,monospace}
+  .q{display:flex;gap:10px;padding:7px 0;border-bottom:1px dashed #1c2740}
+  .q:last-child{border-bottom:none}
+  .ql{flex:none;width:88px;font-size:12.5px;color:var(--dim)}
+  .qv{font-size:13.5px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--muted);font-weight:600}
+  td .k{color:var(--keep)} td .a{color:var(--agent)} td .t{color:var(--tail)}
+  .foot{font-size:12.5px;color:var(--dim);text-align:center;margin-top:34px}
+  .sup{font-size:12.5px;color:var(--dim);margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>四段式干净版 · 一个综合 agent + 一条死规则尾巴</h1>
+    <p class="sub">把上一版 18 个平铺节点收敛成 4 段。能力没丢，只是重新组织：理解交给一个综合 agent，钱和契约交给一条薄薄的死规则尾巴。</p>
+    <div class="principle"><b>原则：</b>综合 agent 负责「理解和提议」，死规则尾巴负责「把关和落账」。agent 可以大胆推理，但幻觉记不进账。</div>
+  </header>
+
+  <h2>主流程 · 四段</h2>
+
+  <div class="stage">
+    <div class="shead"><span class="sno">1</span><h3>读进来 · 文件变原文</h3><span class="tag">死规则 + 解析补救 agent</span></div>
+    <div class="sbody">
+      <div class="row"><span class="node">输入文件</span><span class="arr">→</span><span class="node">按后缀路由</span><span class="arr">→</span><span class="node">解析成 RawDocument</span></div>
+      <div class="row"><span class="lbl">软失败（文字够不够干净/结构化）→</span><span class="node agent">解析补救 agent</span><span class="arr">⇄</span><span class="lbl">换路重解析（文本层空→OCR / 某页糊→重OCR那页），≤2 次</span></div>
+      <div class="row"><span class="lbl">硬失败且救不回 →</span><span class="node human">PENDING_REVIEW</span><span class="lbl">（绝不拿垃圾往下跑）</span></div>
+    </div>
+  </div>
+  <div class="down">↓</div>
+
+  <div class="stage">
+    <div class="shead"><span class="sno">2</span><h3>双路抽取 · 各出一份草稿</h3><span class="tag">规则 + LLM</span></div>
+    <div class="sbody">
+      <div class="row"><span class="node">RawDocument</span><span class="arr">→</span><span class="node">规则正则抽取</span><span class="lbl">草稿一</span></div>
+      <div class="row"><span class="node">RawDocument</span><span class="arr">→</span><span class="node">LLM 结构化抽取</span><span class="lbl">草稿二（可选，无 key 降级）</span></div>
+      <p class="note">两路都只"读"，不做最终决策；结果一起交给第 3 段。</p>
+    </div>
+  </div>
+  <div class="down">↓</div>
+
+  <div class="stage">
+    <div class="shead"><span class="sno">3</span><h3>综合 agent · 唯一的"脑子"</h3><span class="tag">理解 + 提议，带工具</span></div>
+    <div class="sbody">
+      <div class="row"><span class="node">草稿一</span><span class="arr">+</span><span class="node">草稿二</span><span class="arr">+</span><span class="node">原件</span><span class="arr">+</span><span class="node">台账</span><span class="arr">→</span><span class="node agent big">综合 agent</span></div>
+      <div class="row"><span class="lbl">它自己核对相同/不同、必要时调原文，产出完整提案：</span></div>
+      <div class="row"><span class="node agent"> reconciled 字段</span><span class="node agent">归一化费用名</span><span class="node agent">匹配老账单</span><span class="node agent">AR/AP 推理</span></div>
+      <div class="row"><span class="lbl">工具：</span><span class="node">读原文</span><span class="node">查台账</span><span class="node">查费用名字典</span></div>
+      <p class="note">它只产"提案 + 理由"，不直接落账；理由写进 audit_trail。</p>
+    </div>
+  </div>
+  <div class="down">↓</div>
+
+  <div class="stage">
+    <div class="shead"><span class="sno">4</span><h3>死规则尾巴 · 把关和落账</h3><span class="tag">薄 · 全死规则</span></div>
+    <div class="sbody">
+      <div class="row"><span class="node tail">校验</span><span class="arr">→</span><span class="node tail">定 operation</span><span class="arr">→</span><span class="node tail">落账 + 六字段 JSON</span><span class="arr">→</span><span class="node">输出</span></div>
+      <div class="row"><span class="lbl">任何不可信 →</span><span class="node human">PENDING_REVIEW</span></div>
+      <p class="note">校验=挑数字毛病；定 operation=CREATE/UPDATE/NO_CHANGE/PENDING_REVIEW；落账=角色→AR/AP 那一下死规则 + 按契约写 JSON。</p>
+    </div>
+  </div>
+
+  <h2>软失败的边界（第 1 段闸门）</h2>
+  <div class="box">
+    <p>一句话：<b style="color:var(--txt)">读出的文字，够不够干净、够不够结构化，能让我试着抽字段？</b> 可判定指标：</p>
+    <ul>
+      <li>有没有金额样子的数字；有没有至少一条费用行；</li>
+      <li>有没有任何单号/箱号；OCR 置信度是否太低；</li>
+      <li>金额里是否混了字母、日期是否可能。</li>
+    </ul>
+    <p>够 → 进第 2 段；不够 → 软失败 → 补救 agent 换路；救不回 → PENDING_REVIEW，<b style="color:var(--txt)">不跑下游</b>。</p>
+  </div>
+
+  <h2>综合 agent · 模块视角</h2>
+  <div class="box">
+    <div class="q"><span class="ql">它拿到什么</span><span class="qv">两份结构化草稿 + RawDocument 原件 + 台账访问 + 记账主体配置。</span></div>
+    <div class="q"><span class="ql">东西从哪来</span><span class="qv">第 2 段两路抽取；原件来自第 1 段；台账是运行时输入。</span></div>
+    <div class="q"><span class="ql">它干什么</span><span class="qv">核对两稿异同、必要时读原文；归一化费用名；认亲匹配老账单；推理 AR/AP 角色。产出一份完整提案 + 理由。</span></div>
+    <div class="q"><span class="ql">它交回什么</span><span class="qv">提案（reconciled 字段 / 标准名 / 匹配结果 / 角色候选）+ 置信度 + 理由，交给第 4 段。</span></div>
+    <div class="q"><span class="ql">它拿不到什么</span><span class="qv">不直接写台账、不直接落账、不改输出契约；拿不准就标低置信，交尾巴转人工。</span></div>
+  </div>
+
+  <h2>死规则尾巴 · 三步大白话</h2>
+  <div class="grid">
+    <div class="box"><h4 style="color:var(--tail)">校验</h4><p>挑数字毛病：金额是数字吗、币种是真实 ISO 码吗、明细加总=合计吗、箱号校验位对吗、有无 OCR 混淆。产 issues + 置信度。</p></div>
+    <div class="box"><h4 style="color:var(--tail)">定 operation</h4><p>结合匹配+校验：没匹配到=CREATE；匹配到有更新=UPDATE；无变化=NO_CHANGE；有阻断/低置信=PENDING_REVIEW。</p></div>
+    <div class="box"><h4 style="color:var(--tail)">落账 + 输出</h4><p>角色→AR/AP 那一下用死规则（同输入同结果、可测试）；按题目六字段契约写 JSON，扩展全进 audit_trail。</p></div>
+  </div>
+
+  <h2>18 → 4 收敛对照（能力没丢，只是重组）</h2>
+  <table>
+    <tr><th>段</th><th>收进来的旧节点</th><th>性质</th></tr>
+    <tr><td>1 读进来</td><td>A 输入 / B 路由 / C 解析 / H 补救 / P 兜底</td><td><span class="k">死规则</span> + <span class="a">补救 agent</span></td></tr>
+    <tr><td>2 双路抽取</td><td>D 规则 / E LLM</td><td><span class="k">死规则骨架里的 LLM</span></td></tr>
+    <tr><td>3 综合 agent</td><td>G 融合 / I 归一化 / J+K 匹配 / L+N AR/AP 推理 / F 裁判(并入软失败闸门)</td><td><span class="a">一个 agent</span></td></tr>
+    <tr><td>4 死规则尾巴</td><td>M 校验 / O 判定 / L 落账那一下 / Z 装配 / OUT 输出 / P 兜底</td><td><span class="t">薄死规则</span></td></tr>
+  </table>
+  <p class="sup">注：AR/AP 的"推理"在第 3 段 agent，"角色→AR/AP 落账那一下"在第 4 段死规则——推理放 agent，落账放规则。</p>
+
+  <h2>自主与安全的取舍</h2>
+  <div class="box">
+    <p>把匹配/归一化/AR/AP 推理收进一个 agent，自主性更强、节点更少，但 LLM 输出不如死规则可复现。对策：<b style="color:var(--txt)">agent 只产提案</b>，第 4 段死规则对钱关键项（金额、落账方向、operation）复核，匹配结果能用确定性键查表的就交叉验证。这样既自主，又不会把错账悄悄记进总账。</p>
+  </div>
+
+  <p class="foot">航运智能账单助手 · 四段式干净版（v2，取代 18 节点版）· 数据契约三层模型不变</p>
+</div>
+</body>
+</html>

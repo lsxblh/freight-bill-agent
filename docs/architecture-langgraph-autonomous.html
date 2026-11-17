@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>航运账单 Agent · LangGraph 自主版架构框架</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<style>
+  :root{
+    --bg:#070d1a; --surface:#0d1526; --surface2:#111c33; --line:#1e2c4a;
+    --keep:#10b981; --up:#f59e0b; --new:#22d3ee; --human:#fb7185;
+    --ink:#e6edf7; --muted:#8fa3c0;
+  }
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    background-image:
+      radial-gradient(900px 500px at 85% -5%, rgba(34,211,238,.10), transparent 60%),
+      radial-gradient(800px 500px at -10% 20%, rgba(16,185,129,.08), transparent 60%),
+      radial-gradient(700px 500px at 60% 110%, rgba(245,158,11,.06), transparent 60%);
+    background-attachment:fixed;
+  }
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-track{background:#0a1120;}
+  ::-webkit-scrollbar-thumb{background:#22345c;border-radius:6px;border:2px solid #0a1120;}
+  ::-webkit-scrollbar-thumb:hover{background:#2f4a80;}
+  .card{background:linear-gradient(160deg,var(--surface2),var(--surface));border:1px solid var(--line);border-radius:14px;}
+  .chip{display:inline-flex;align-items:center;gap:.45rem;padding:.3rem .8rem;border-radius:999px;font-size:.8rem;border:1px solid var(--line);background:rgba(255,255,255,.03);cursor:pointer;transition:all .2s;user-select:none;}
+  .chip .dot{width:.65rem;height:.65rem;border-radius:999px;}
+  .chip:hover{transform:translateY(-1px);}
+  .chip.active{box-shadow:0 0 0 2px currentColor inset;}
+  .reveal{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s ease;}
+  .reveal.on{opacity:1;transform:none;}
+  .tag{font-size:.7rem;padding:.15rem .55rem;border-radius:6px;font-weight:600;letter-spacing:.02em;white-space:nowrap;}
+  .tag-keep{background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.4);}
+  .tag-up{background:rgba(245,158,11,.15);color:#fcd34d;border:1px solid rgba(245,158,11,.4);}
+  .tag-new{background:rgba(34,211,238,.15);color:#67e8f9;border:1px solid rgba(34,211,238,.4);}
+  .tag-human{background:rgba(251,113,133,.15);color:#fda4af;border:1px solid rgba(251,113,133,.4);}
+  table{border-collapse:collapse;width:100%;}
+  th{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);text-align:left;padding:.6rem .8rem;border-bottom:1px solid var(--line);}
+  td{padding:.6rem .8rem;border-bottom:1px solid rgba(30,44,74,.55);font-size:.86rem;vertical-align:top;}
+  tr:hover td{background:rgba(34,211,238,.04);}
+  code{font-family:Consolas,"Courier New",monospace;font-size:.82em;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.18);padding:.08em .4em;border-radius:5px;color:#a5f3fc;}
+  .mermaid{display:flex;justify-content:center;}
+  .mermaid svg{max-width:100%;height:auto;}
+  /* 图例聚焦：淡化其它类别 */
+  #graphWrap.focus-keep .node:not(.keep), #graphWrap.focus-keep .edgePath{opacity:.18;}
+  #graphWrap.focus-up .node:not(.up), #graphWrap.focus-up .edgePath{opacity:.18;}
+  #graphWrap.focus-new .node:not(.new), #graphWrap.focus-new .edgePath{opacity:.18;}
+  #graphWrap.focus-human .node:not(.human), #graphWrap.focus-human .edgePath{opacity:.18;}
+  #graphWrap .node,#graphWrap .edgePath{transition:opacity .3s;}
+  nav a{color:var(--muted);font-size:.85rem;transition:color .2s;}
+  nav a:hover{color:var(--ink);}
+  .step-num{width:2rem;height:2rem;border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:700;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.45);color:#67e8f9;flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<!-- 固定导航 -->
+<nav class="fixed top-0 inset-x-0 z-50 backdrop-blur-md border-b" style="background:rgba(7,13,26,.82);border-color:var(--line);">
+  <div class="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-2 font-bold tracking-wide">
+      <span style="color:var(--new);">&#9670;</span> 航运账单 Agent · 自主版框架
+    </div>
+    <div class="hidden md:flex items-center gap-5">
+      <a href="#graph">主图</a>
+      <a href="#agents">Agent 节点</a>
+      <a href="#tools">工具层</a>
+      <a href="#reuse">底子复用</a>
+      <a href="#boundary">自主边界</a>
+      <a href="#steps">落地顺序</a>
+    </div>
+  </div>
+</nav>
+
+<header class="max-w-6xl mx-auto px-5 pt-28 pb-10">
+  <div class="reveal">
+    <p class="text-sm mb-3" style="color:var(--new);">ADR-0001 落地框架 · 草案 · 2026-11-16</p>
+    <h1 class="text-3xl md:text-5xl font-extrabold leading-tight mb-4">
+      确定性骨架 <span style="color:var(--keep);">+</span> 定点自主判断
+    </h1>
+    <p class="text-base md:text-lg max-w-3xl" style="color:var(--muted);">
+      把现有 <code>shipping_billing</code> 的流水线搬进 LangGraph 状态图：钱的部分继续用死规则守住，
+      只在「真有不确定性」的三个点放入会自己拿主意的 agent，再加一个独立小模型当质检裁判。
+      输出契约、金额规则、测试金断言全部不变。
+    </p>
+  </div>
+  <div class="reveal flex flex-wrap gap-3 mt-8">
+    <div class="card px-5 py-3"><div class="text-2xl font-extrabold" style="color:var(--keep);">~85%</div><div class="text-xs mt-1" style="color:var(--muted);">现有代码原样保留</div></div>
+    <div class="card px-5 py-3"><div class="text-2xl font-extrabold" style="color:var(--new);">3 + 1</div><div class="text-xs mt-1" style="color:var(--muted);">agent 判断点 + 质检裁判</div></div>
+    <div class="card px-5 py-3"><div class="text-2xl font-extrabold" style="color:var(--up);">6</div><div class="text-xs mt-1" style="color:var(--muted);">agent 可调用工具</div></div>
+    <div class="card px-5 py-3"><div class="text-2xl font-extrabold" style="color:var(--human);">&#8804;2</div><div class="text-xs mt-1" style="color:var(--muted);">自动重试上限，再转人工</div></div>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-5 pb-24 space-y-16">
+
+  <!-- ============ 主图 ============ -->
+  <section id="graph" class="reveal scroll-mt-20">
+    <h2 class="text-2xl font-bold mb-2">一、LangGraph 主图</h2>
+    <p class="text-sm mb-4" style="color:var(--muted);">点击图例可高亮对应类别的节点。绿色=现有底子原样搬进节点；青色=新建的自主判断；玫红=人工兜底。</p>
+    <div class="flex flex-wrap gap-2 mb-5" id="legend">
+      <span class="chip" data-focus="keep" style="color:var(--keep);"><span class="dot" style="background:var(--keep);"></span>保留复用（确定性）</span>
+      <span class="chip" data-focus="up" style="color:var(--up);"><span class="dot" style="background:var(--up);"></span>保留 + 小改</span>
+      <span class="chip" data-focus="new" style="color:var(--new);"><span class="dot" style="background:var(--new);"></span>新建（agent / 裁判）</span>
+      <span class="chip" data-focus="human" style="color:var(--human);"><span class="dot" style="background:var(--human);"></span>人工兜底</span>
+    </div>
+    <div class="card p-6 overflow-x-auto" id="graphWrap">
+      <pre class="mermaid">
+flowchart TD
+    subgraph IN["拆包层 · 底子原样保留"]
+        A["输入文件 EML / PDF / 图片 / Excel / Word"] --> B["dispatcher 按后缀路由"]
+        B --> C["解析 RawDocument：文本层 / OCR / 表格"]
+    end
+
+    C --> D["规则抽取 rules.py"]
+    D --> E["LLM 结构化抽取 llm_extractor"]
+    E --> F{"解析质检裁判 · 独立小模型"}
+    F -->|通过| G["融合 merge：规则为准 LLM 补位"]
+    F -->|不合格 且 重试小于2| H["补救 agent：自己选工具重试"]
+    H -->|重解析 / 重OCR / 重抽取 · 带反馈| C
+    F -->|重试2次仍不合格| P
+    G --> I["归一化：费用名 / 币种 / 付款条款"]
+    I --> J["四级匹配 + 金额二次判别"]
+    J -->|唯一命中| L["AR/AP 过账 · 确定性核心"]
+    J -->|无命中 / 多候选| K["模糊匹配 agent：查台账核原文"]
+    K --> L
+    L -->|角色明确| M["校验 + 置信度"]
+    L -->|角色不明| N["AR/AP 判断 agent：四要素推理"]
+    N --> M
+    M --> O["operation 判定 CREATE / UPDATE / NO_CHANGE"]
+    O --> Z["装配 OutputRecord + audit_trail"]
+    P["PENDING_REVIEW 转人工复核"] --> Z
+    Z --> OUT["合法 JSON 输出 · 契约不变"]
+
+    classDef keep fill:#06281e,stroke:#10b981,stroke-width:1.5px,color:#d1fae5
+    classDef up fill:#2b1d05,stroke:#f59e0b,stroke-width:1.5px,color:#fef3c7
+    classDef new fill:#062a33,stroke:#22d3ee,stroke-width:2px,color:#cffafe
+    classDef human fill:#2b0a12,stroke:#fb7185,stroke-width:2px,color:#ffe4e6
+    class A,B,C,D,E,G,I,J,M,O,Z,OUT keep
+    class L up
+    class F,H,K,N new
+    class P human
+      </pre>
+      <p id="mermaidFallback" class="hidden text-sm text-center py-8" style="color:var(--muted);">
+        图表加载失败（可能是网络拿不到 Mermaid CDN）。下方「Agent 节点」与「底子复用」两节已用文字完整描述同一架构。
+      </p>
+    </div>
+    <p class="text-xs mt-3" style="color:var(--muted);">
+      状态在节点间以 TypedDict 传递（RawDocument → ExtractedDocument → OutputRecord 三层模型不变）；
+      条件边只有四处：质检闸门、匹配结果、AR/AP 角色明确与否、重试计数。
+    </p>
+  </section>
+
+  <!-- ============ Agent 节点 ============ -->
+  <section id="agents" class="reveal scroll-mt-20">
+    <h2 class="text-2xl font-bold mb-2">二、四个新角色：它们拿到什么、从哪来、拿不到什么</h2>
+    <p class="text-sm mb-6" style="color:var(--muted);">裁判只吹哨不下场；三个 agent 只提候选和理由，最终写账永远由确定性代码执行。</p>
+    <div class="grid md:grid-cols-2 gap-5">
+
+      <div class="card p-6" style="border-top:3px solid var(--new);">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-lg">解析质检裁判 <span class="text-sm font-normal" style="color:var(--muted);">小模型</span></h3>
+          <span class="tag tag-new">新建 · 只当裁判</span>
+        </div>
+        <ul class="text-sm space-y-2" style="color:var(--muted);">
+          <li><b style="color:var(--ink);">拿到什么：</b>抽取结果 + 原文片段 + 校验预检结果。</li>
+          <li><b style="color:var(--ink);">从哪来：</b>规则通道与 LLM 通道的输出（ExtractedDocument）。</li>
+          <li><b style="color:var(--ink);">拿不到什么：</b>不改任何字段、不做抽取，只输出「过 / 不过 + 原因 + 重试建议」。</li>
+          <li><b style="color:var(--ink);">闸门规则：</b>不过 → 补救 agent，最多 2 次；仍不过 → PENDING_REVIEW。</li>
+        </ul>
+      </div>
+
+      <div class="card p-6" style="border-top:3px solid var(--new);">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-lg">补救 agent</h3>
+          <span class="tag tag-new">新建 · 控制流自主</span>
+        </div>
+        <ul class="text-sm space-y-2" style="color:var(--muted);">
+          <li><b style="color:var(--ink);">拿到什么：</b>裁判的失败原因 + 当前 RawDocument + 已重试次数。</li>
+          <li><b style="color:var(--ink);">从哪来：</b>质检闸门的条件边（这是现在代码完全没有的回路）。</li>
+          <li><b style="color:var(--ink);">能调工具：</b><code>reparse</code> <code>reocr_page</code> <code>reextract_fields</code>，自己决定用哪个。</li>
+          <li><b style="color:var(--ink);">拿不到什么：</b>不能直接改金额、不能绕过裁判、不能超过重试上限。</li>
+        </ul>
+      </div>
+
+      <div class="card p-6" style="border-top:3px solid var(--new);">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-lg">模糊匹配 agent</h3>
+          <span class="tag tag-new">新建 · 会用工具</span>
+        </div>
+        <ul class="text-sm space-y-2" style="color:var(--muted);">
+          <li><b style="color:var(--ink);">拿到什么：</b>四级匹配没命中或多候选时的候选账单行 + 台账 + 费用名字典。</li>
+          <li><b style="color:var(--ink);">从哪来：</b>matcher.py 的结果（唯一命中时根本不打扰它）。</li>
+          <li><b style="color:var(--ink);">能调工具：</b><code>query_ledger</code> <code>lookup_charge_dict</code> <code>read_source</code>，像业务员一样自己翻台账核原文。</li>
+          <li><b style="color:var(--ink);">拿不到什么：</b>不能新造账单号；证据不足就维持「未匹配」，理由写进 audit_trail。</li>
+        </ul>
+      </div>
+
+      <div class="card p-6" style="border-top:3px solid var(--new);">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-lg">AR/AP 判断 agent</h3>
+          <span class="tag tag-new">新建 · 语义推理</span>
+        </div>
+        <ul class="text-sm space-y-2" style="color:var(--muted);">
+          <li><b style="color:var(--ink);">拿到什么：</b>签发方 / 接收方 / MY_COMPANY / 收费方向四要素 + 原文证据。</li>
+          <li><b style="color:var(--ink);">从哪来：</b>posting 确定性核心判「角色不明」时才触发（明确时照旧走死规则）。</li>
+          <li><b style="color:var(--ink);">能调工具：</b><code>read_source</code> <code>query_ledger</code>（看同一对手方的历史方向）。</li>
+          <li><b style="color:var(--ink);">拿不到什么：</b>不算金额、不改过账公式；只输出角色判断 + 理由，交回确定性核心执行。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 工具层 ============ -->
+  <section id="tools" class="reveal scroll-mt-20">
+    <h2 class="text-2xl font-bold mb-2">三、工具层：全是现有模块包一层</h2>
+    <p class="text-sm mb-6" style="color:var(--muted);">agent 的「手」不新造轮子——每个工具就是对现有确定性模块的一次受控调用，入参出参都有 schema。</p>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="card p-5"><code>reparse</code><p class="text-sm mt-2" style="color:var(--muted);">换参数重新解析整个文件。包 <code>ingest/dispatcher</code> + 各 loader。</p></div>
+      <div class="card p-5"><code>reocr_page</code><p class="text-sm mt-2" style="color:var(--muted);">只对指定页重新 OCR。包 <code>ingest/ocr_client</code>（自带重试与熔断）。</p></div>
+      <div class="card p-5"><code>reextract_fields</code><p class="text-sm mt-2" style="color:var(--muted);">带「缺什么」的反馈重抽指定字段。包 <code>extract/llm_extractor</code>。</p></div>
+      <div class="card p-5"><code>query_ledger</code><p class="text-sm mt-2" style="color:var(--muted);">按参考号 / 对手方 / 金额区间查台账。包 <code>matching/ledger</code>。</p></div>
+      <div class="card p-5"><code>lookup_charge_dict</code><p class="text-sm mt-2" style="color:var(--muted);">查费用名归一化字典（28 组）。包 <code>normalize/charge_names</code>。</p></div>
+      <div class="card p-5"><code>read_source</code><p class="text-sm mt-2" style="color:var(--muted);">按 locator 读原始文本片段当证据。包 <code>models.RawDocument</code>。</p></div>
+    </div>
+  </section>
+
+  <!-- ============ 底子复用 ============ -->
+  <section id="reuse" class="reveal scroll-mt-20">
+    <h2 class="text-2xl font-bold mb-2">四、这个底子能用多少？</h2>
+    <p class="text-sm mb-6" style="color:var(--muted);">
+      结论：<b style="color:var(--keep);">约 85% 的代码原样保留</b>。真正动的只有编排层（pipeline.py + agent.py 约 500 行改写成 StateGraph），
+      外加新建裁判 / agent / 工具约 600–800 行。钱相关的模块一行不碰。
+    </p>
+    <div class="card overflow-x-auto">
+      <table>
+        <thead><tr><th>现有模块</th><th>处置</th><th>在新架构里的角色</th></tr></thead>
+        <tbody>
+          <tr><td><code>models.py</code> 三层模型</td><td><span class="tag tag-keep">原样保留</span></td><td>状态数据契约：TypedDict state 里装的还是 RawDocument / ExtractedDocument / OutputRecord</td></tr>
+          <tr><td><code>ingest/*</code> dispatcher + 5 个 loader + ocr_client</td><td><span class="tag tag-keep">原样保留</span></td><td>解析节点；同时是 reparse / reocr_page 两个工具的本体</td></tr>
+          <tr><td><code>extract/rules.py</code> <code>rows.py</code> <code>tables.py</code></td><td><span class="tag tag-keep">原样保留</span></td><td>规则抽取节点（确定性主力）</td></tr>
+          <tr><td><code>extract/llm_extractor.py</code></td><td><span class="tag tag-keep">原样保留</span></td><td>LLM 抽取节点；也是 reextract_fields 工具的本体</td></tr>
+          <tr><td><code>extract/merge.py</code></td><td><span class="tag tag-keep">原样保留</span></td><td>融合节点：规则为准、LLM 补位、冲突降级的原则不变</td></tr>
+          <tr><td><code>normalize/*</code></td><td><span class="tag tag-keep">原样保留</span></td><td>归一化节点；字典同时是 lookup_charge_dict 工具</td></tr>
+          <tr><td><code>matching/matcher.py</code> + <code>ledger.py</code></td><td><span class="tag tag-keep">原样保留</span></td><td>四级匹配节点；ledger 同时是 query_ledger 工具</td></tr>
+          <tr><td><code>finance/posting.py</code></td><td><span class="tag tag-up">保留 + 小改</span></td><td>确定性过账核心不动，只加一个「接受 agent 判出的角色」的入口</td></tr>
+          <tr><td><code>validation/*</code></td><td><span class="tag tag-keep">原样保留</span></td><td>校验节点；校验结果同时喂给质检裁判当输入</td></tr>
+          <tr><td><code>pipeline_utils.py</code> operation 判定 / 重复检测</td><td><span class="tag tag-keep">原样保留</span></td><td>判定节点（CREATE / UPDATE / NO_CHANGE / PENDING_REVIEW 公式不变）</td></tr>
+          <tr><td><code>harness/cache.py</code> + <code>runlog.py</code></td><td><span class="tag tag-keep">原样保留</span></td><td>哈希缓存离线回放、运行日志继续用</td></tr>
+          <tr><td><code>pipeline.py</code> + <code>agent.py</code></td><td><span class="tag tag-up">改写</span></td><td>BillingAgent.run 的编排逻辑 → LangGraph StateGraph；删掉 Runnable 假并行与循环 import</td></tr>
+          <tr><td><code>cli.py</code> / <code>config.py</code></td><td><span class="tag tag-up">小改</span></td><td>新增 JUDGE_MODEL、重试上限、agent 开关（无 key 时整图退化为纯确定性，仍可跑）</td></tr>
+          <tr><td>新建 <code>graph/</code> 包</td><td><span class="tag tag-new">新建</span></td><td>state.py（状态定义）/ graph.py（建图）/ judge.py（裁判）/ agents.py（三个 agent）/ tools.py（六个工具）</td></tr>
+          <tr><td><code>tests/</code> + <code>examples/</code></td><td><span class="tag tag-keep">保留 + 增补</span></td><td>89 个测试与金断言不动，新增裁判闸门 / 重试回路 / agent 降级测试</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ 自主边界 ============ -->
+  <section id="boundary" class="reveal scroll-mt-20">
+    <h2 class="text-2xl font-bold mb-6">五、自主性的边界：哪儿放脑子，哪儿放规章</h2>
+    <div class="grid md:grid-cols-2 gap-5">
+      <div class="card p-6" style="border-top:3px solid var(--keep);">
+        <h3 class="font-bold mb-3" style="color:#6ee7b7;">必须死规则（一行都不交给 LLM）</h3>
+        <ul class="text-sm space-y-2" style="color:var(--muted);">
+          <li>金额加减与币种换算</li>
+          <li>ISO 6346 箱号校验位、单价 × 数量校验</li>
+          <li>输出六字段 JSON 契约</li>
+          <li>四级匹配的规则本体</li>
+          <li>AR/AP 过账公式（agent 只补「角色」这一个输入）</li>
+          <li>operation 判定公式与重复检测</li>
+        </ul>
+      </div>
+      <div class="card p-6" style="border-top:3px solid var(--new);">
+        <h3 class="font-bold mb-3" style="color:#67e8f9;">允许自主（没有唯一正确答案的地方）</h3>
+        <ul class="text-sm space-y-2" style="color:var(--muted);">
+          <li>解析质量差时「怎么补救」：重 OCR？换抽法？放弃？</li>
+          <li>规则匹配不上时「像不像同一张账单」的推理</li>
+          <li>记账角色不明时结合四要素的判断</li>
+          <li>以上每一步的理由，全部写进 audit_trail 可审计</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card p-5 mt-5 text-sm" style="border-left:3px solid var(--up);">
+      <b>一句话原则：</b><span style="color:var(--muted);">自主节点只产出「候选 + 理由」，最终落账永远由确定性代码执行；任何 agent 失效，整图退化为今天的纯规则流水线，照样能出合法 JSON。</span>
+    </div>
+  </section>
+
+  <!-- ============ 落地顺序 ============ -->
+  <section id="steps" class="reveal scroll-mt-20">
+    <h2 class="text-2xl font-bold mb-6">六、落地顺序：每一步都可验证</h2>
+    <div class="space-y-4">
+      <div class="card p-5 flex gap-4 items-start">
+        <div class="step-num">1</div>
+        <div><b>先搬骨架，不改行为。</b><p class="text-sm mt-1" style="color:var(--muted);">把现有 pipeline 逐站搬进 StateGraph 节点，删 agent.py 假并行。验证：89 个测试全绿、examples 输出逐字节一致。</p></div>
+      </div>
+      <div class="card p-5 flex gap-4 items-start">
+        <div class="step-num">2</div>
+        <div><b>加质检裁判 + 重试回路。</b><p class="text-sm mt-1" style="color:var(--muted);">JUDGE_MODEL 小模型只吹哨；补救 agent 带反馈重试 ≤2 次。验证：构造坏 OCR 样例，看重试与转人工路径。</p></div>
+      </div>
+      <div class="card p-5 flex gap-4 items-start">
+        <div class="step-num">3</div>
+        <div><b>加模糊匹配 / AR/AP 判断 agent + 工具层。</b><p class="text-sm mt-1" style="color:var(--muted);">只在规则搞不定的分支触发。验证：多候选样例、角色不明样例，audit_trail 里能看到推理理由。</p></div>
+      </div>
+      <div class="card p-5 flex gap-4 items-start">
+        <div class="step-num">4</div>
+        <div><b>评测对比收尾。</b><p class="text-sm mt-1" style="color:var(--muted);">同一批 examples 跑新旧两版，对比 recall / precision / PENDING_REVIEW 率与耗时成本，写进 HARNESS 报告。</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="border-t py-8 text-center text-xs" style="border-color:var(--line);color:var(--muted);">
+  航运智能账单助手 · LangGraph 自主版框架草案 · 依据 ADR-0001（确定性骨架 + LLM 定点判断 + 独立小模型质检）· 2026-11-16
+</footer>
+
+<script>
+  // 入场动画
+  const io = new IntersectionObserver(es => es.forEach(e => { if(e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target);} }), {threshold:.08});
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  // Mermaid 初始化（深色主题）
+  function initMermaid(){
+    if(!window.mermaid){ document.getElementById('mermaidFallback').classList.remove('hidden'); return; }
+    mermaid.initialize({
+      startOnLoad:false, theme:'base', securityLevel:'strict',
+      themeVariables:{
+        darkMode:true, background:'#0d1526',
+        primaryColor:'#111c33', primaryTextColor:'#e6edf7', primaryBorderColor:'#2a3c63',
+        lineColor:'#5b7299', fontSize:'14px', fontFamily:'"Segoe UI","Microsoft YaHei",sans-serif',
+        clusterBkg:'#0a1120', clusterBorder:'#2a3c63', edgeLabelBackground:'#0d1526'
+      },
+      flowchart:{ curve:'basis', nodeSpacing:42, rankSpacing:46, padding:12 }
+    });
+    mermaid.run({querySelector:'.mermaid'}).catch(()=>{ document.getElementById('mermaidFallback').classList.remove('hidden'); });
+  }
+  if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', initMermaid); } else { initMermaid(); }
+
+  // 图例聚焦交互
+  const wrap = document.getElementById('graphWrap');
+  document.querySelectorAll('#legend .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const f = chip.dataset.focus;
+      const cls = 'focus-' + f;
+      const wasActive = chip.classList.contains('active');
+      document.querySelectorAll('#legend .chip').forEach(c => c.classList.remove('active'));
+      wrap.className = wrap.className.replace(/focus-\w+/g,'').trim();
+      if(!wasActive){ chip.classList.add('active'); wrap.classList.add(cls); }
+    });
+  });
+</script>
+</body>
+</html>

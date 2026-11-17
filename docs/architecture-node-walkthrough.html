@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>航运账单 Agent · 18 节点逐个走一遍</title>
+<style>
+  :root{
+    --bg:#0b1120; --panel:#111a2e; --panel2:#0f1626; --line:#22304d;
+    --txt:#e6edf7; --muted:#93a4c3; --dim:#6b7a99;
+    --keep:#10b981; --keep-bg:#06281e;
+    --up:#f59e0b;   --up-bg:#2b1d05;
+    --new:#22d3ee;  --new-bg:#062a33;
+    --human:#fb7185;--human-bg:#2b0a12;
+    --accent:#7dd3fc;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;line-height:1.65;}
+  a{color:var(--accent);text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px}
+  header{padding:44px 0 8px}
+  h1{font-size:30px;margin:0 0 8px;letter-spacing:.5px}
+  .sub{color:var(--muted);font-size:15px;max-width:760px}
+  .back{display:inline-block;margin-top:14px;font-size:13px;border:1px solid var(--line);
+    padding:6px 12px;border-radius:8px;color:var(--accent)}
+  /* 图例 */
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0 6px}
+  .lg{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);
+    border:1px solid var(--line);border-radius:999px;padding:5px 12px;background:var(--panel2)}
+  .dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+  /* 数据契约 */
+  .contract{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;margin:20px 0 8px;
+    border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel2)}
+  .cl{flex:1;min-width:220px;padding:16px 18px}
+  .cl + .cl{border-left:1px solid var(--line)}
+  .cl b{display:block;font-size:15px;margin-bottom:4px}
+  .cl span{font-size:12.5px;color:var(--muted)}
+  .arrow{align-self:center;color:var(--dim);font-size:20px;padding:0 4px}
+  /* 阶段标题 */
+  .stage{margin:40px 0 6px;display:flex;align-items:center;gap:12px}
+  .stage .no{font-size:12px;color:var(--dim);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+  .stage h2{font-size:20px;margin:0}
+  .stage p{margin:2px 0 0;color:var(--muted);font-size:13px}
+  /* 节点卡 */
+  .card{border:1px solid var(--line);border-radius:16px;background:var(--panel);
+    margin:16px 0;overflow:hidden}
+  .card.keep{border-left:4px solid var(--keep)}
+  .card.up{border-left:4px solid var(--up)}
+  .card.new{border-left:4px solid var(--new)}
+  .card.human{border-left:4px solid var(--human)}
+  .chead{display:flex;align-items:center;gap:12px;padding:16px 20px;background:var(--panel2);
+    border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .letter{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:16px;flex:none}
+  .keep .letter{background:var(--keep-bg);color:var(--keep);border:1px solid var(--keep)}
+  .up .letter{background:var(--up-bg);color:var(--up);border:1px solid var(--up)}
+  .new .letter{background:var(--new-bg);color:var(--new);border:1px solid var(--new)}
+  .human .letter{background:var(--human-bg);color:var(--human);border:1px solid var(--human)}
+  .chead h3{margin:0;font-size:17px}
+  .badge{font-size:11.5px;padding:3px 10px;border-radius:999px;border:1px solid;white-space:nowrap}
+  .badge.keep{color:var(--keep);border-color:var(--keep);background:var(--keep-bg)}
+  .badge.up{color:var(--up);border-color:var(--up);background:var(--up-bg)}
+  .badge.new{color:var(--new);border-color:var(--new);background:var(--new-bg)}
+  .badge.human{color:var(--human);border-color:var(--human);background:var(--human-bg)}
+  .mod{margin-left:auto;font-size:12px;color:var(--dim);font-family:Consolas,monospace}
+  .cbody{padding:6px 20px 18px}
+  .q{display:flex;gap:12px;padding:9px 0;border-bottom:1px dashed #1c2740}
+  .q:last-child{border-bottom:none}
+  .ql{flex:none;width:96px;font-size:12.5px;color:var(--dim);padding-top:2px}
+  .qv{font-size:14px;color:var(--txt)}
+  .qv .muted{color:var(--muted)}
+  .qv code{background:#0a1322;border:1px solid var(--line);border-radius:5px;
+    padding:1px 6px;font-size:12.5px;color:#a5d8ff;font-family:Consolas,monospace}
+  .analogy{color:var(--muted);font-size:13px}
+  .hat{display:inline-block;font-size:11px;color:var(--new);border:1px solid var(--new);
+    border-radius:5px;padding:1px 6px;margin-right:6px;background:var(--new-bg)}
+  /* 串起来 */
+  .flow{border:1px solid var(--line);border-radius:14px;background:var(--panel2);
+    padding:20px 22px;margin:34px 0}
+  .flow h2{margin:0 0 10px;font-size:19px}
+  .flow .line{font-size:14px;color:var(--muted);margin:6px 0}
+  .flow b{color:var(--txt)}
+  .note{font-size:12.5px;color:var(--dim);margin-top:26px;text-align:center}
+  .tag-stage{font-size:12px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>18 个节点，逐个走一遍</h1>
+    <p class="sub">配套框架图的「节点详解」。每个节点都按同一套六问来讲：<b>它拿到什么 / 东西从哪来 / 它干什么 / 它交回什么 / 它拿不到什么 / 出错怎么办</b>。
+    绿色是原样保留的死规则，橙色是升级，青色是新增的 agent，红色是转人工兜底。</p>
+    <a class="back" href="architecture-langgraph-autonomous.html">← 回到框架总图</a>
+    <div class="legend">
+      <span class="lg"><span class="dot" style="background:var(--keep)"></span>死规则 · 原样保留（12）</span>
+      <span class="lg"><span class="dot" style="background:var(--up)"></span>升级 · 加入口（1）</span>
+      <span class="lg"><span class="dot" style="background:var(--new)"></span>新 agent（4）</span>
+      <span class="lg"><span class="dot" style="background:var(--human)"></span>转人工兜底（1）</span>
+    </div>
+    <div class="contract">
+      <div class="cl"><b style="color:var(--keep)">RawDocument · 原始证据</b><span>text / pages / tables / sha256 / 附件树。只搬原文，不懂语义。</span></div>
+      <span class="arrow">→</span>
+      <div class="cl"><b style="color:var(--up)">ExtractedDocument / ChargeLine · 语义</b><span>单据类型 / 双方 / 费用明细 / 标识符 / 置信度。规则+LLM 抽出来的。</span></div>
+      <span class="arrow">→</span>
+      <div class="cl"><b style="color:var(--new)">OutputRecord · 标准输出</b><span>题目六字段 + audit_trail。严格 JSON，契约不变。</span></div>
+    </div>
+    <p class="tag-stage">状态就在这三层模型之间流动；下面按流程顺序，一站一站走。</p>
+  </header>
+
+  <!-- ================= 拆包层 ================= -->
+  <div class="stage"><span class="no">第 1 段</span><div><h2>拆包层 · 把文件变成原文</h2><p>A → B → C，底子原样保留</p></div></div>
+
+  <div class="card keep">
+    <div class="chead"><span class="letter">A</span><h3>输入文件</h3><span class="badge keep">死规则</span><span class="mod">cli.py · collect_input_files</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">用户给的一个/一批文件路径，或一个文件夹（EML / PDF / 图片 / Excel / Word）。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">命令行 <code>python -m shipping_billing run &lt;文件&gt;</code>。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv">只把"要处理哪些文件"列出来：展开文件夹、去重、排序。<span class="analogy">像收发室先把今天要处理的信摞整齐，还没拆。</span></span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv">一份文件路径清单。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">不看文件内容，不判断格式——那是下一站的事。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">路径不存在 → 直接报错提示，不往下走。</span></div>
+    </div>
+  </div>
+
+  <div class="card keep">
+    <div class="chead"><span class="letter">B</span><h3>dispatcher 按后缀路由</h3><span class="badge keep">死规则</span><span class="mod">ingest/dispatcher.py</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">一个文件路径。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">A 的清单，逐个递过来。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv">看后缀决定交给哪个 loader：<code>.eml</code>→邮件、<code>.pdf</code>→PDF、图片→OCR、<code>.xlsx</code>→Excel、<code>.docx</code>→Word。<span class="analogy">这就是你之前问的"按后缀分流"，用路由/条件边实现，不是 LangGraph 内置。</span></span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv">选定的 loader + 这个文件。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">不读内容，只看后缀；后缀不认识就标 <code>unknown</code>。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">不支持的后缀 → 标记 unknown / 跳过，不拖垮整批。</span></div>
+    </div>
+  </div>
+
+  <div class="card keep">
+    <div class="chead"><span class="letter">C</span><h3>解析成 RawDocument</h3><span class="badge keep">死规则</span><span class="mod">ingest/*_loader · ocr_client</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">文件 + 选定的 loader。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">B。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv">把文件变成"原始证据"：PDF 读文本层、图片/扫描件走 OCR、Excel 读表格、EML 取头+附件递归；算 <code>sha256</code> 当缓存键。<span class="analogy">像把信拆开、把外文扫描件拍照存档，但还不翻译。</span></span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv"><code>RawDocument</code>：text / pages / tables / metadata / 附件树 / sha256 / ocr_source。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">不理解语义、不抽字段，只"搬运原文"。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">OCR 重试 3 次 + 熔断；读不出 → 抛异常被上层隔离。<b>这也是补救 agent 能"重 OCR / 重解析"回到的一站。</b></span></div>
+    </div>
+  </div>
+
+  <!-- ================= 抽取层 ================= -->
+  <div class="stage"><span class="no">第 2 段</span><div><h2>抽取层 · 两条通道抓字段</h2><p>D 规则 + E LLM 并行，各抓各的</p></div></div>
+
+  <div class="card keep">
+    <div class="chead"><span class="letter">D</span><h3>规则抽取</h3><span class="badge keep">死规则</span><span class="mod">extract/rules.py</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">RawDocument 的 text / tables。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">C。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv">正则 + 启发式抓核心：单号 / 日期 / 金额 / 箱号 / 费用行 / 交易双方。<span class="analogy">顺风局主力——干净固定的单据，它几乎全包。</span></span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv">一份 <code>ExtractedDocument</code> 雏形（charges + identifiers + 部分语义字段），<code>method=rules</code>。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">没见过的模板、模糊措辞会抓不全；抓不到就留空，不臆造。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">抓不到的字段置 <code>null</code>，交给 E 补位。</span></div>
+    </div>
+  </div>
+
+  <div class="card keep">
+    <div class="chead"><span class="letter">E</span><h3>LLM 结构化抽取</h3><span class="badge keep">死规则骨架里的 LLM</span><span class="mod">extract/llm_extractor.py</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">RawDocument 文本 + 一份 JSON Schema（限定只能输出哪些字段）。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">C（与 D 接力）。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv"><code>提示词 | ChatOpenAI | 解析器</code>，温度 0，补规则抓不到的语义字段：签发方 / 接收方 / 单据类型 / 模糊费用名。<span class="analogy">这是"翻译官"帽子。可选——没配 API key 就降级成空实现。</span></span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv">另一份 <code>ExtractedDocument</code> 候选（LLM 视角），<code>method=llm</code>。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">不做最终决策，金额它说了不算；不碰匹配 / 过账。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">重试 → 仍失败返回 <code>None</code> → 融合时退回纯规则，永不拖垮流水线。</span></div>
+    </div>
+  </div>
+
+  <!-- ================= 质检闸门 ================= -->
+  <div class="stage"><span class="no">第 3 段</span><div><h2>质检闸门 · 新自主回路</h2><p>F 裁判吹哨，H 补救重试（≤2），这是"自主应对"的核心</p></div></div>
+
+  <div class="card new">
+    <div class="chead"><span class="letter">F</span><h3>解析质检裁判</h3><span class="badge new">新 · 独立小模型</span><span class="mod">graph/judge.py（新建）</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">D 和 E 的抽取结果 + 原始 RawDocument 供对照。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">D / E。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv"><span class="hat">裁判员</span>独立小模型只判断"这解析够不够格让后续正常走"：关键字段齐不齐、金额跟原文对不对得上、有没有明显 OCR 错。<b>只吹哨，不抽取、不返工。</b></span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv">一个判定 <code>pass / fail</code> + 理由；fail 时指出"哪里不行"，当作补救的反馈。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">不改数据、不做抽取、不决定最终入账。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">条件边：pass→G；fail 且重试&lt;2→H；重试 2 次仍 fail→P 转人工。</span></div>
+    </div>
+  </div>
+
+  <div class="card new">
+    <div class="chead"><span class="letter">H</span><h3>补救 agent</h3><span class="badge new">新 · 控制流自主</span><span class="mod">graph/agents.py（新建）</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">F 的 fail 理由 + RawDocument + 当前抽取结果 + 重试计数。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">F。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv"><span class="hat">裁判员</span>自己决定怎么补救，选工具：<code>reparse</code> 换解析 / <code>reocr_page</code> 重 OCR 某页 / <code>reextract_fields</code> 带反馈重抽。<span class="analogy">不像旧代码只会"跳过/转人工"，它会"自己想办法再来一次"。</span></span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv">一个动作决策 + 工具调用后的新 RawDocument / 抽取结果，<b>回到 C 重新走一遍</b>。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">不能无限重试（≤2）；不能跳过质检直接入账；不能改钱。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">重试耗尽 → 交回 F → P 转人工。</span></div>
+    </div>
+  </div>
+
+  <!-- ================= 融合归一 ================= -->
+  <div class="stage"><span class="no">第 4 段</span><div><h2>融合 + 归一化 · 把两份结果合成一份标准件</h2><p>G 裁决合并，I 查字典标准化</p></div></div>
+
+  <div class="card keep">
+    <div class="chead"><span class="letter">G</span><h3>融合 merge</h3><span class="badge keep">死规则</span><span class="mod">extract/merge.py</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">D（规则）和 E（LLM）两份结果。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">F 判定通过后。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv">规则为准、LLM 补位、冲突降级：数字字段以规则/原文为准；语义字段规则缺才用 LLM；冲突保留规则值 + warning + 置信×0.8；LLM 补的费用封顶 0.7。</span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv">一份合并后的 <code>ExtractedDocument</code>。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">不重新抽取，只"合并裁决"。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">冲突记 warning，不崩。</span></div>
+    </div>
+  </div>
+
+  <div class="card keep">
+    <div class="chead"><span class="letter">I</span><h3>归一化</h3><span class="badge keep">死规则</span><span class="mod">normalize/charge_names · currency</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">合并后的 ExtractedDocument（charges 的 raw_name 等）。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">G。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv">费用名查字典（28 组）→标准名；币种标准化；付款条款归一。<span class="analogy">注意：归一化是字典（代码）的活，不是 agent 的活。</span></span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv">charges 的 <code>charge_item</code> 标准化 + <code>standardized</code> 标记。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">字典没收录的不瞎翻——保留原名 + 低置信 + 提示。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">未知名 → 保留原名、打低置信，转人工核对。</span></div>
+    </div>
+  </div>
+
+  <!-- ================= 匹配 ================= -->
+  <div class="stage"><span class="no">第 5 段</span><div><h2>匹配 · 这笔是不是老账单</h2><p>J 四级死规则先试，搞不定交给 K 模糊匹配 agent</p></div></div>
+
+  <div class="card keep">
+    <div class="chead"><span class="letter">J</span><h3>四级匹配 + 金额二次判别</h3><span class="badge keep">死规则</span><span class="mod">matching/matcher.py</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">一条 ChargeLine + ExtractedDocument + Ledger（台账）+ settings。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">I，逐条费用递过来。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv">按优先级试四条规则：①单据编号+费用名 ②提单号+费用名+币种 ③订舱号+费用名+币种 ④箱号+交易双方+日期+金额。同规则多命中用<b>金额距离</b>选最接近；先按记账主体隔离台账。</span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv"><code>MatchResult</code>：matched / line / rule / score / conflicts / candidate_count。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">不创造台账记录；字段冲突只记录，不擅自改。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">条件边：唯一命中→L；无命中 / 多候选→K。</span></div>
+    </div>
+  </div>
+
+  <div class="card new">
+    <div class="chead"><span class="letter">K</span><h3>模糊匹配 agent</h3><span class="badge new">新 · 会用工具</span><span class="mod">graph/agents.py（新建）</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">J 没搞定的 ChargeLine + 候选 + 台账访问 + 原文。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">J（无命中 / 多候选）。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv"><span class="hat">裁判员</span>用工具 <code>query_ledger</code> 翻台账 / <code>read_source</code> 核原文 / <code>lookup_charge_dict</code>，推理"这条到底对应哪笔，还是新账单"。<span class="analogy">像个会查资料的老业务员，不是干瞪眼。</span></span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv">一个匹配候选 + 理由 + 置信度（写进 audit_trail），交回 L。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">不直接写台账；拿不准就标低置信 / 转人工，不硬配。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">实在定不了 → 建议当新账单，或转人工。</span></div>
+    </div>
+  </div>
+
+  <!-- ================= 过账 ================= -->
+  <div class="stage"><span class="no">第 6 段</span><div><h2>过账 · 应收还是应付</h2><p>L 确定性核心先判，角色不明交给 N 四要素推理</p></div></div>
+
+  <div class="card up">
+    <div class="chead"><span class="letter">L</span><h3>AR/AP 过账 · 确定性核心</h3><span class="badge up">升级 · 加入口</span><span class="mod">finance/posting.py</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">匹配结果 + issuer / recipient + 记账主体 + document_type + amount_sign。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">J 或 K。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv">三步：①定角色（记账主体是签发方还是接收方，相似度≥0.7）②基础方向（我方签发→AR，接收→AP）③Credit / 红字反转。<b>升级点：新增"接受 agent 判出的角色"入口。</b></span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv"><code>PostingDecision</code>：posting_type / role / confidence / reasoning。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">角色不明绝不猜 → <code>None</code> + 转人工。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">条件边：角色明确→M；角色不明→N。</span></div>
+    </div>
+  </div>
+
+  <div class="card new">
+    <div class="chead"><span class="letter">N</span><h3>AR/AP 判断 agent</h3><span class="badge new">新 · 四要素推理</span><span class="mod">graph/agents.py（新建）</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">L 定不了角色的情况 + 四要素（签发方 / 接收方 / 记账主体 / 收费方向）+ 原文上下文。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">L（角色不明）。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv"><span class="hat">裁判员</span>结合四要素推理"我方到底是收钱还是付钱"，读合同措辞等上下文。</span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv">一个角色 / 方向候选 + 理由（写进 audit_trail），交回 M。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">推理不出就维持 <code>None</code> 转人工，不猜。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">仍不明 → P 转人工。</span></div>
+    </div>
+  </div>
+
+  <!-- ================= 校验判定输出 ================= -->
+  <div class="stage"><span class="no">第 7 段</span><div><h2>校验 · 判定 · 输出</h2><p>M 挑毛病，O 定操作，P 兜底，Z 装配，OUT 出 JSON</p></div></div>
+
+  <div class="card keep">
+    <div class="chead"><span class="letter">M</span><h3>校验 + 置信度</h3><span class="badge keep">死规则</span><span class="mod">validation/validators.py</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">ChargeLine + ExtractedDocument + PostingDecision。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">L 或 N。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv">五项校验（金额有效 / 币种 ISO4217 / 明细 vs 合计 / OCR 混淆 / 重复提取）+ ISO6346 箱号校验位 + 单价×数量。产 <code>Issue</code>（error/warning/info），汇总置信度。</span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv">issues 清单 + 置信度。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">只挑毛病，不决定入账（那是 O 的事）。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">有 ERROR → <code>has_blocking</code> → 后面判 PENDING_REVIEW。</span></div>
+    </div>
+  </div>
+
+  <div class="card keep">
+    <div class="chead"><span class="letter">O</span><h3>operation 判定</h3><span class="badge keep">死规则</span><span class="mod">pipeline_utils.py</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">匹配结果 + issues + 置信度。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">M。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv">定 operation：匹配到且无变化→<code>NO_CHANGE</code>；匹配到有更新→<code>UPDATE</code>；没匹配到→<code>CREATE</code>；有阻断 ERROR / 低置信 / 冲突→<code>PENDING_REVIEW</code>。</span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv">operation 四值之一。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">不改金额 / 方向。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">拿不准 → PENDING_REVIEW。</span></div>
+    </div>
+  </div>
+
+  <div class="card human">
+    <div class="chead"><span class="letter">P</span><h3>PENDING_REVIEW 转人工</h3><span class="badge human">兜底</span><span class="mod">pipeline_utils.py</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">前面各站标记的"不可信 / 拿不准"记录 + 原因。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">F（重试耗尽）/ O（阻断）。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv">不自动入账，贴"待人工复核"标签，写清缺什么 / 可能是什么 / 证据在哪。<span class="analogy">像质检员把可疑产品放一边，既不悄悄放行也不直接扔。</span></span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv">一条 <code>operation=PENDING_REVIEW</code> 的记录。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">不替人做决定。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">它就是兜底，不再往下出错。</span></div>
+    </div>
+  </div>
+
+  <div class="card keep">
+    <div class="chead"><span class="letter">Z</span><h3>装配 OutputRecord + audit_trail</h3><span class="badge keep">死规则</span><span class="mod">pipeline.py · assemble</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">operation + 单据信息 + 交易双方 + 费用明细 + 财务属性 + 各站理由 / 证据。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">O 或 P。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv">按题目六字段组装 <code>OutputRecord</code>；把 agent 的理由、匹配规则、置信度、来源、field_changes 塞进 <code>audit_trail</code>。</span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv">一个 <code>OutputRecord</code>。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">不新增顶层字段——扩展全进 audit_trail。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">装配失败 → 隔离该条，整批继续。</span></div>
+    </div>
+  </div>
+
+  <div class="card keep">
+    <div class="chead"><span class="letter">OUT</span><h3>合法 JSON 输出</h3><span class="badge keep">死规则</span><span class="mod">models.to_json_dict</span></div>
+    <div class="cbody">
+      <div class="q"><span class="ql">它拿到什么</span><span class="qv">OutputRecord 列表。</span></div>
+      <div class="q"><span class="ql">东西从哪来</span><span class="qv">Z。</span></div>
+      <div class="q"><span class="ql">它干什么</span><span class="qv"><code>to_json_dict</code>，严格照题目契约输出；写文件 / 打印。</span></div>
+      <div class="q"><span class="ql">它交回什么</span><span class="qv">最终 JSON，<b>契约不变</b>。</span></div>
+      <div class="q"><span class="ql">它拿不到什么</span><span class="qv">不再改内容。</span></div>
+      <div class="q"><span class="ql">出错怎么办</span><span class="qv">终点，无下游。</span></div>
+    </div>
+  </div>
+
+  <!-- ================= 串起来 ================= -->
+  <div class="flow">
+    <h2>一句话把 18 站串起来</h2>
+    <p class="line"><b>拆包</b>（A→B→C）把文件变原文 → <b>两条通道抽字段</b>（D 规则 + E LLM）→ <b>质检裁判</b> F 吹哨，不行就让 H 补救重试（≤2）→ 行了就 <b>融合</b> G + <b>归一化</b> I → <b>四级匹配</b> J，搞不定交 K → <b>AR/AP 过账</b> L，角色不明交 N → <b>校验</b> M → <b>定 operation</b> O → 不可信走 P 转人工 → <b>装配</b> Z → <b>出 JSON</b> OUT。</p>
+    <p class="line">记住那两顶帽子：<b style="color:var(--new)">翻译官</b>（E，把单据变结构化数据）+ <b style="color:var(--new)">裁判员</b>（F/H/K/N，在规则拿不准处做判断）。其余全是死规则守着"钱算得对、输出合契约"。</p>
+    <p class="line">四个条件边（自己拿主意的地方）：<b>质检闸门</b>（F）、<b>匹配结果</b>（J）、<b>角色明确与否</b>（L）、<b>重试计数</b>（H→C 回路）。</p>
+  </div>
+
+  <p class="note">航运智能账单助手 · LangGraph 自主版 · 节点详解 · 与框架总图配套 · 数据契约三层模型不变</p>
+</div>
+</body>
+</html>
