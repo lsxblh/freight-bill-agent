@@ -7,7 +7,7 @@
 
 **Blocked by:** 07, 08
 
-**Status:** done (commit a729566+docs, 待 lead merge; 离线 137 绿/eval 7/7, e2e operation 0.8571/posting 1.0, PDF1 恢复 NO_CHANGE)
+**Status:** done (commits a729566+2da0ba1, merged; 离线 137 绿/eval 7/7, e2e operation 0.8571/posting 1.0, PDF1 恢复 NO_CHANGE、差异转 PDF2 recipient 补位)
 
 - [x] 草稿提示词含日期语义约束（取签发/到货/账单日期，不取 release/notice）
 - [x] LLM 草稿缓存键含提示词指纹（提示词改动失效旧缓存）

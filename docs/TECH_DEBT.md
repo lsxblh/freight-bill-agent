@@ -107,3 +107,11 @@
 - 经验：提示词杠杆边界=operation 由尾巴死规则算(pipeline_utils.py:124-155 _decide_operation)，agent 只经 role→posting 与自标置信度影响它；few-shot 内部自洽=每条示例事实须完整支撑提案每个字段(例2/3 补"签发方=记账主体"后重启 e2e)。
 - 观察：PDF2 真草稿 issuer 误读 "Pilot Aiship Tech co., Ltd."(规则 NEPTUNE 正确)，融合"规则为准"+冲突 warning+置信×0.8 正确兜底；agent 在冲突 warning 下信任规则值，若后续模型被 warning 带偏可能回归。
 - 审查剩余 minor 待另批：agents.py:76-77 Proposal.charge_item/standardized 死字段、:345-347 装配异常回落无审计标记、:217-221 拿不到两份独立草稿、:139,151-159 提议名不入 audit_trail。
+
+### 票09 草稿日期语义 + 缓存指纹 + minor 清理（137 绿，已 merge；PDF1 修复但差异转 PDF2）
+- 落地：`llm_extractor.py:61` SYSTEM_PROMPT 日期语义约束（document_date 只取签发/账单/到货日期，release/notice/RELEASE DATE 不取，无则 null）+反例；`:145-150,154` 缓存键加提示词指纹 sha256(SYSTEM+USER+schema)[:12] 前置（提示词/Schema 改动自动失效旧草稿缓存）；`agents.py:117-133/188/201-207/300-306` 删 Proposal 死字段+孤立变量+4 赋值；`:392-397` 装配异常回落往 audit_trail.warnings 追加"agent 装配异常，回落确定性链"。新增 tests/test_agent_fallback_audit.py 1 + test_llm_cache_fingerprint.py 3。merge/pipeline_utils 零 diff。
+- e2e（18m20s）：PDF1 On Carriage 恢复 NO_CHANGE（新草稿键 51cc50a2/指纹 4c4c9b670333，旧 stale e9941e79 不存在，新草稿 date=None）；但 operation 仍 0.8571——差异转 PDF2 Handling 35 NO_CHANGE→UPDATE。
+- 【剩余质量债·根因同机制·需拍板】PDF2 真草稿 recipient 误读为 NEPTUNE（规则 recipient=None、台账真实接收方 CIMC WETRANS）→merge.py:53-55 无条件补位→doc.recipient=NEPTUNE 与台账 CIMC 比 similarity<0.85→pipeline_utils.py:110-115 判 overwrite→UPDATE。与 PDF1 日期同机制=**无规则防守的 LLM 补位字段×融合无条件采纳**（日期/recipient 先后中招）。逐字段提示词约束=打地鼠。结构性候选：B-targeted=规则缺失而 LLM 补位的双方字段不得驱动 overwrite（低信任/enrich 处理）；C=规则缺失不补双方；A2=提示词 recipient 语义约束（仍打地鼠）。或接受 0.86/1.0 记债停止。
+- 经验：两层回落结构=循环内 complete() 异常→确定性提案(agent_confidence 非空)；循环外装配异常→record_chain(agent_confidence=None+warnings 留痕)；测外层用畸形提案(reasons 非列表)而非抛异常 complete()。提示词指纹覆盖模板+输出 Schema；agent SYSTEM_PROMPT 不在草稿缓存指纹范围（agent 无响应缓存）。
+- 观察：无规则防守的补位字段是草稿质量波动重灾区；PDF2 issuer 误读(Pilot Aiship)有规则防守被"规则为准"吸收，recipient 无规则防守则误读直穿。
+- 流程：e2e --basetemp=.work/e2e_tmp 落证据；跑后核验新旧缓存键+离线 merge 复现差异根因，不必二次联网。
