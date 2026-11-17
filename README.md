@@ -332,3 +332,7 @@ python -m pytest tests -q
 * [`docs/HARNESS.md`](docs/HARNESS.md) —— Harness 工程化设计（验收第 8 条）
 * [`docs/DESIGN_THINKING.md`](docs/DESIGN_THINKING.md) —— 10 点思考（验收第 9 条）
 * [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md) —— 验收标准逐条对照
+
+---
+
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
