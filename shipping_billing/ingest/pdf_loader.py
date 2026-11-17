@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from ..io_utils import get_logger, normalize_text, sha256_bytes
@@ -15,6 +16,25 @@ from ..models import RawDocument, RawTable
 from .ocr_client import OcrClient
 
 logger = get_logger("pdf")
+
+# 与 extract.rows.parse_charge_row 的行长上限一致：超过该长度的行会被费用解析丢弃。
+_FUSED_LINE_LIMIT = 220
+# 费用表粘连信号：表头 DESCRIPTION 与 AMOUNT/RATE/DEBIT 被压进同一行。
+_FUSED_CHARGE_SIGNAL = re.compile(r"DESCRIPTION.{0,40}(?:AMOUNT|RATE|DEBIT)", re.IGNORECASE)
+
+
+def _fused_charge_table(text: str) -> bool:
+    """判断 plain 抽取是否把费用表粘成了超长整行。
+
+    部分 PDF 的文本层在 pypdf plain 模式下会把表头、多行费用与 TOTAL
+    压成一行（单号也会吞掉相邻标签）。此时按行解析全部失效，需要改用
+    layout 模式重抽该页。信号要求"超长行 + 费用表头同现"，避免误伤
+    普通长段落（如免责条款）。
+    """
+    return any(
+        len(line) > _FUSED_LINE_LIMIT and _FUSED_CHARGE_SIGNAL.search(line)
+        for line in text.splitlines()
+    )
 
 
 def _extract_with_pypdf(raw_bytes: bytes) -> tuple[list[str], str | None]:
@@ -30,7 +50,12 @@ def _extract_with_pypdf(raw_bytes: bytes) -> tuple[list[str], str | None]:
         pages: list[str] = []
         for page in reader.pages:
             try:
-                pages.append(normalize_text(page.extract_text() or ""))
+                text = normalize_text(page.extract_text() or "")
+                # 仅当检测到费用表被粘成超长整行时，才对该页改用 layout 模式重抽。
+                # 不能全局用 layout：部分 PDF 在 layout 下金额会粘到描述上，反而解析不出。
+                if _fused_charge_table(text):
+                    text = normalize_text(page.extract_text(extraction_mode="layout") or "")
+                pages.append(text)
             except Exception as exc:  # noqa: BLE001
                 pages.append("")
                 logger.debug("单页解析失败: %s", exc)

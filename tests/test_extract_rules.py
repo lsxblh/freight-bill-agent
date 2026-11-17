@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from shipping_billing.extract import rules
 from shipping_billing.ingest import OcrClient, load_document
+from shipping_billing.models import RawDocument
 
 
 def _extract(settings, path):
@@ -41,6 +42,38 @@ def test_debit_note_pdf(settings) -> None:
     ]
     assert [c.amount for c in doc.charges] == [65.0, 1310.4, 35.0]
     assert doc.charge_total() == 1410.40
+
+
+def test_debit_note_pdf_lines_not_fused(settings) -> None:
+    """回归：文本层必须保留独立行。
+
+    pypdf plain 模式曾把整张费用表粘成一行：单号吞掉尾部 D/C 标签、
+    费用行因整行超长被丢弃。这里直接断言加载结果的行结构。
+    """
+    doc = load_document(
+        settings.data_dir / "samples" / "PDF 示例账单2.pdf", ocr_client=OcrClient(settings)
+    )
+    lines = [ln.strip() for ln in (doc.text or "").splitlines()]
+    ref_lines = [ln for ln in lines if "DC-108478" in ln]
+    assert ref_lines, "缺少单号行"
+    assert all("D/C DATE" not in ln for ln in ref_lines), "单号与日期标签粘连"
+    handling = [ln for ln in lines if ln.startswith("HANDLING CHARGE")]
+    assert len(handling) == 2, "两条 HANDLING CHARGE 应各占一行"
+
+
+def test_balance_due_to_issuer() -> None:
+    """回归：BALANCE DUE TO 与公司名粘连、且尾部带币种金额时仍能识别签发方。
+
+    样例行 'GRAND TOTAL BALANCE DUE TONEPTUNE SHIPPING LIMITED (LAX) USD 1,410.40'
+    中 TO 与 NEPTUNE 无空格，旧正则要求 TO 后必须有空格而漏配；即便配上，
+    尾部的 'USD 1,410.40' 也会污染公司名。这里直接断言 extract_parties 的结果。
+    """
+    text = "GRAND TOTAL BALANCE DUE TONEPTUNE SHIPPING LIMITED (LAX) USD 1,410.40"
+    doc = RawDocument(doc_id="t", path="t.pdf", filename="t.pdf", kind="pdf", text=text)
+    issuer, _recipient, _confidence, _notes = rules.extract_parties(
+        text, doc=doc, doc_type="Debit Note"
+    )
+    assert issuer == "NEPTUNE SHIPPING LIMITED"
 
 
 def test_arrival_notice_pdf(settings) -> None:

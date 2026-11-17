@@ -162,6 +162,11 @@ def _trim_company(value: str) -> str:
     text = re.split(r"\s{2,}", text)[0]
     text = re.split(r"\s+(?:AS\s+AGENTS?|ON\s+BEHALF)\b", text, flags=re.I)[0]
     text = re.split(r"\b(?:TEL|FAX|EMAIL|E-MAIL|ATTN|WEBSITE)\b", text, flags=re.I)[0]
+    # 先剥"尾部 币种+金额"（如 '... (LAX) USD 1,410.40'），否则金额会挡住
+    # 下面的币种与括号清理，把整段尾缀留在公司名里。
+    amount_tail = re.search(r"\s+([A-Z]{3})\s+[\d,]+(?:\.\d+)?$", text)
+    if amount_tail and amount_tail.group(1) in ISO4217_CODES:
+        text = text[: amount_tail.start()]
     # 只去掉"确实是币种"的尾部三位代码，避免把 LTD/LLC/INC 当成币种切掉
     tail = re.search(r"\s+([A-Z]{3})$", text)
     if tail and tail.group(1) in ISO4217_CODES:
@@ -226,8 +231,9 @@ def _company_candidates(lines: list[str], limit: int = 60) -> list[str]:
 
 
 _ISSUER_PATTERNS = (
-    re.compile(r"GRAND\s+TOTAL\s+BALANCE\s+DUE\s+TO\s+(?P<v>[^\n]{3,90})", re.I),
-    re.compile(r"BALANCE\s+DUE\s+TO\s+(?P<v>[^\n]{3,90})", re.I),
+    # TO 后允许无空格：部分 PDF 文本层把 TO 与公司名粘成 'TONEPTUNE...'
+    re.compile(r"GRAND\s+TOTAL\s+BALANCE\s+DUE\s+TO\s*(?P<v>[^\n]{3,90})", re.I),
+    re.compile(r"BALANCE\s+DUE\s+TO\s*(?P<v>[^\n]{3,90})", re.I),
     re.compile(r"(?:ISSUED\s+BY|ISSUER|DOCUMENT\s+ISSUER)[ \t]*:?[ \t]*(?P<v>[^\n]{3,90})", re.I),
     re.compile(
         r"(?:ALL\s+PAYMENTS?\s+MUST\s+BE\s+ISSUED\s+TO|PAYMENTS?\s+TO|REMIT\s+TO|PAYABLE\s+TO)"
