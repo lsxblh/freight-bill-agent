@@ -10,7 +10,7 @@
          → 标准 JSON + 审计链 + 运行报告
 
 票02 起内部编排为四段式 LangGraph StateGraph（读进来 → 双路抽取 →
-综合 → 尾巴，见 shipping_billing.graph），本模块是图的薄封装：
+综合 → 尾巴，见 freight_bill.graph），本模块是图的薄封装：
 批次循环、运行日志、汇总与输出。
 """
 

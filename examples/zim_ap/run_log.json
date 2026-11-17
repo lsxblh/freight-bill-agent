@@ -1,8 +1,8 @@
 {
-  "run_id": "20261117-180513-1aa1a2",
-  "started_at": "2026-11-17T18:05:13+0800",
-  "finished_at": "2026-11-17T18:05:13+0800",
-  "duration_s": 0.077,
+  "run_id": "20261117-191117-c62083",
+  "started_at": "2026-11-17T19:11:17+0800",
+  "finished_at": "2026-11-17T19:11:17+0800",
+  "duration_s": 0.07,
   "counters": {
     "files_ok": 1,
     "records": 2,
@@ -19,7 +19,7 @@
       "file": "图片示例.png",
       "kind": "image",
       "status": "ok",
-      "duration_ms": 66,
+      "duration_ms": 58,
       "documents": 1,
       "records": 2,
       "operations": {

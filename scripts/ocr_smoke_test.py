@@ -15,8 +15,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from shipping_billing.config import Settings
-from shipping_billing.ingest.ocr_client import OcrClient, OcrError
+from freight_bill.config import Settings
+from freight_bill.ingest.ocr_client import OcrClient, OcrError
 
 
 def main(argv: list[str]) -> int:

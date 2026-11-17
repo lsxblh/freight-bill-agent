@@ -20,12 +20,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from shipping_billing.config import Settings
-from shipping_billing.extract.llm_extractor import LlmCharge, LlmDocument
-from shipping_billing.graph.judge import JudgeDecision, LlmJudge, compute_metrics
-from shipping_billing.ingest.ocr_client import OcrOutcome
-from shipping_billing.models import RawDocument
-from shipping_billing.pipeline import BillingAgent
+from freight_bill.config import Settings
+from freight_bill.extract.llm_extractor import LlmCharge, LlmDocument
+from freight_bill.graph.judge import JudgeDecision, LlmJudge, compute_metrics
+from freight_bill.ingest.ocr_client import OcrOutcome
+from freight_bill.models import RawDocument
+from freight_bill.pipeline import BillingAgent
 
 #: 干净的 canned 文本：读得出来但没有任何账单信号（无数字/单号/日期），
 #: 代码指标判为边界 case，交裁判吹哨。

@@ -19,8 +19,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from shipping_billing.config import Settings
-from shipping_billing.pipeline import BillingAgent
+from freight_bill.config import Settings
+from freight_bill.pipeline import BillingAgent
 
 
 class FakeAgentLlm:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from shipping_billing.extract.rows import (
+from freight_bill.extract.rows import (
     is_charge_header,
     looks_like_charge_description,
     parse_charge_row,

@@ -17,10 +17,10 @@ from unittest import mock
 
 from langgraph.graph.state import CompiledStateGraph
 
-from shipping_billing.config import Settings
-from shipping_billing.extract.llm_extractor import LlmCharge, LlmDocument
-from shipping_billing.ingest.ocr_client import OcrOutcome
-from shipping_billing.pipeline import BillingAgent
+from freight_bill.config import Settings
+from freight_bill.extract.llm_extractor import LlmCharge, LlmDocument
+from freight_bill.ingest.ocr_client import OcrOutcome
+from freight_bill.pipeline import BillingAgent
 
 #: 假 OCR 文本：规则抽不出任何字段，单据内容完全由假 LLM 草稿提供。
 CANNED_OCR_TEXT = (

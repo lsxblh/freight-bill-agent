@@ -21,9 +21,9 @@ from pathlib import Path
 
 import pytest
 
-from shipping_billing.config import PROJECT_ROOT, Settings
-from shipping_billing.harness.evaluation import evaluate, load_expectations
-from shipping_billing.pipeline import BillingAgent
+from freight_bill.config import PROJECT_ROOT, Settings
+from freight_bill.harness.evaluation import evaluate, load_expectations
+from freight_bill.pipeline import BillingAgent
 
 SAMPLES = PROJECT_ROOT / "data" / "samples"
 LEDGER = PROJECT_ROOT / "data" / "ledger" / "existing_bills.json"

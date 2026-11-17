@@ -19,9 +19,9 @@ from pathlib import Path
 
 import pytest
 
-from shipping_billing.config import Settings
-from shipping_billing.graph.agents import ChatAgentLlm
-from shipping_billing.pipeline import BillingAgent, MissingAgentKeyError
+from freight_bill.config import Settings
+from freight_bill.graph.agents import ChatAgentLlm
+from freight_bill.pipeline import BillingAgent, MissingAgentKeyError
 
 
 class FakeAgentLlm:
@@ -122,7 +122,7 @@ def test_cli_missing_key_exits_with_clear_error(
     monkeypatch: pytest.MonkeyPatch, samples_dir: Path, capsys: pytest.CaptureFixture
 ) -> None:
     """CLI 命脉模式无 key：退出码 2 + 点名 LLM_API_KEY 的报错，不抛裸栈。"""
-    from shipping_billing.cli import main
+    from freight_bill.cli import main
 
     monkeypatch.setenv("AGENT_REQUIRED_KEY", "true")
     monkeypatch.delenv("LLM_API_KEY", raising=False)
@@ -144,7 +144,7 @@ def test_eval_gate_stays_offline_deterministic_without_key(
     拍板 Q2：闸门必须可复现——cmd_eval 内部钉住兼容模式 + 关闭 LLM，
     不受 AGENT_REQUIRED_KEY/LLM_ENABLED 环境变量影响，绝不联网。
     """
-    from shipping_billing.cli import main
+    from freight_bill.cli import main
 
     monkeypatch.setenv("AGENT_REQUIRED_KEY", "true")
     monkeypatch.delenv("LLM_API_KEY", raising=False)

@@ -5,7 +5,7 @@
 ## 1. `demo/` —— 默认视角（NEPTUNE SHIPPING LIMITED，AR）
 
 ```bash
-python -m shipping_billing eval --out-dir examples/demo
+python -m freight_bill eval --out-dir examples/demo
 ```
 
 输入：`data/samples` 下全部 4 个样例（1 封 EML + 2 个 PDF + 1 张 PNG）
@@ -29,7 +29,7 @@ python -m shipping_billing eval --out-dir examples/demo
 
 ```bash
 # 确定性模式复现（不联网、不花 key）：关掉综合 agent 命脉 + OCR 走本地缓存
-AGENT_REQUIRED_KEY=false python -m shipping_billing run --inputs data/samples/图片示例.png \
+AGENT_REQUIRED_KEY=false python -m freight_bill run --inputs data/samples/图片示例.png \
   --ledger data/ledger/existing_bills.json \
   --entity "ALL AMERICA FORWARDING, INC." \
   --ocr-mode cache \

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from shipping_billing.normalize.charge_names import find_alias_in_line, standardize
-from shipping_billing.normalize.currency import is_valid_currency, normalize_currency
-from shipping_billing.normalize.payment_terms import (
+from freight_bill.normalize.charge_names import find_alias_in_line, standardize
+from freight_bill.normalize.currency import is_valid_currency, normalize_currency
+from freight_bill.normalize.payment_terms import (
     detect_payment_term_in_text,
     normalize_payment_term,
 )

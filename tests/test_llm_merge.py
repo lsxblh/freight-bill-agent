@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from shipping_billing.extract.llm_extractor import LlmCharge, LlmDocument
-from shipping_billing.extract.merge import merge_llm_result
-from shipping_billing.models import ChargeLine, ExtractedDocument
+from freight_bill.extract.llm_extractor import LlmCharge, LlmDocument
+from freight_bill.extract.merge import merge_llm_result
+from freight_bill.models import ChargeLine, ExtractedDocument
 
 
 def _rule_doc() -> ExtractedDocument:

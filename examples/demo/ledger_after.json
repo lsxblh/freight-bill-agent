@@ -27,7 +27,7 @@
       "posting_type": "AR",
       "accounting_entity": "NEPTUNE SHIPPING LIMITED",
       "source": "PDF 示例账单2.pdf",
-      "updated_at": "2026-11-17T18:05:11+0800",
+      "updated_at": "2026-11-17T19:11:16+0800",
       "note": "历史账单：Handling Charge 原始金额 40.00"
     },
     {
@@ -106,7 +106,7 @@
       "posting_type": "AR",
       "accounting_entity": "NEPTUNE SHIPPING LIMITED",
       "source": "PDF示例账单1.pdf",
-      "updated_at": "2026-11-17T18:05:11+0800",
+      "updated_at": "2026-11-17T19:11:16+0800",
       "note": "仅提供提单号，用于验证匹配规则 2"
     },
     {

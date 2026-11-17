@@ -1,8 +1,8 @@
 """命令行入口。
 
-    python -m shipping_billing run  --inputs data/samples --out-dir output
-    python -m shipping_billing demo
-    python -m shipping_billing eval
+    python -m freight_bill run  --inputs data/samples --out-dir output
+    python -m freight_bill demo
+    python -m freight_bill eval
 """
 
 from __future__ import annotations
@@ -214,7 +214,7 @@ def cmd_eval(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="shipping_billing",
+        prog="freight_bill",
         description="多格式文档解析的航运智能账单助手智能体",
     )
     sub = parser.add_subparsers(dest="command")

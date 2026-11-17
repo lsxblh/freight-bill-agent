@@ -39,7 +39,7 @@
 ```bash
 # 离线闸门（不联网）
 python -m pytest -p no:cacheprovider          # 137 passed, 1 deselected
-python -m shipping_billing eval ...           # 7/7（cmd_eval 钉住确定性）
+python -m freight_bill eval ...           # 7/7（cmd_eval 钉住确定性）
 
 # 真模型端到端（需 LLM_API_KEY；OCR cache 回放；约 20-30 分钟）
 python -m pytest tests/test_e2e_real_agent.py -m e2e

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from shipping_billing.extract import rules
-from shipping_billing.ingest import OcrClient, load_document
-from shipping_billing.models import RawDocument
+from freight_bill.extract import rules
+from freight_bill.ingest import OcrClient, load_document
+from freight_bill.models import RawDocument
 
 
 def _extract(settings, path):

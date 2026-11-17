@@ -20,10 +20,10 @@ pip install -r requirements.txt
 export LLM_API_KEY=sk-xxx LLM_ENABLED=true LLM_MODEL=deepseek-chat LLM_BASE_URL=https://api.deepseek.com/v1
 
 # 3) 一键演示：跑 data/samples 下 4 个真实样例，输出到 output/demo
-python -m shipping_billing demo
+python -m freight_bill demo
 
 # 4) 与金标准对比（回归闸门钉住离线确定性，无 key 也能跑、可复现）
-python -m shipping_billing eval
+python -m freight_bill eval
 ```
 
 > **命脉模式**：CLI/生产入口缺省 `AGENT_REQUIRED_KEY=true`——综合 agent 必须可用，
@@ -71,7 +71,7 @@ field_accuracy {'operation':1.0,'posting_type':1.0,'reference_no':1.0,'currency'
 ## 3. 目录结构
 
 ```
-shipping_billing/
+freight_bill/
 ├── config.py             # 全部配置（OCR/LLM/记账主体/阈值），CLI > .env > 默认
 ├── models.py             # 三层模型：原始证据 → 语义 → 标准输出
 ├── pipeline.py           # 图的薄封装：批次循环/运行日志/汇总输出（BillingAgent）
@@ -226,14 +226,14 @@ RawDocument ─────┤                                          ├─�
 
 ```bash
 # 方式 A：真实调用（OCR 服务需要能下载文件，所以要给公网地址）
-python -m shipping_billing run --inputs data/samples \
+python -m freight_bill run --inputs data/samples \
   --ocr-mode api --ocr-public-base-url https://your-file-host/bills
 
 # 方式 B：离线回放（评审/CI 默认，结果可复现）
-python -m shipping_billing run --inputs data/samples --ocr-mode cache
+python -m freight_bill run --inputs data/samples --ocr-mode cache
 
 # 方式 C：只认 PDF 文本层（纯文本件，最快）
-python -m shipping_billing run --inputs data/samples --ocr-mode text
+python -m freight_bill run --inputs data/samples --ocr-mode text
 ```
 
 * 调用形态严格按题目给的网关：`POST https://gateway.pltplt.com/ai/process`
@@ -253,26 +253,26 @@ python -m shipping_billing run --inputs data/samples --ocr-mode text
 
 ```bash
 # 指定输入与记账主体
-python -m shipping_billing run --inputs data/samples --entity "CIMC WETRANS INTL LOG CO LTD"
+python -m freight_bill run --inputs data/samples --entity "CIMC WETRANS INTL LOG CO LTD"
 
 # 换一个主体视角（ZIM 发票 → AP）
-python -m shipping_billing run --inputs data/samples/图片示例.png \
+python -m freight_bill run --inputs data/samples/图片示例.png \
   --entity "ALL AMERICA FORWARDING, INC." --out-dir output/ap
 
 # 启用 LLM 增强（任意 OpenAI 兼容端点，默认 DeepSeek）
 export LLM_ENABLED=true LLM_API_KEY=sk-xxx LLM_MODEL=deepseek-chat
-python -m shipping_billing run --inputs data/samples --llm
+python -m freight_bill run --inputs data/samples --llm
 
 # 命脉模式（v2 CLI 缺省）：综合 agent 必须有 key，无 key 明确报错（退出码 2）
 # 显式回退确定性链（兼容模式）：
-AGENT_REQUIRED_KEY=false python -m shipping_billing run --inputs data/samples
+AGENT_REQUIRED_KEY=false python -m freight_bill run --inputs data/samples
 
 # 真模型端到端测试（联网，默认离线套件不跑；无 key 优雅 skip）
 # 先设 LLM_API_KEY（可选 LLM_BASE_URL / LLM_MODEL），OCR 走缓存回放
 python -m pytest tests/test_e2e_real_agent.py -m e2e
 
 # 把更新写回台账
-python -m shipping_billing run --inputs data/samples --write-ledger
+python -m freight_bill run --inputs data/samples --write-ledger
 
 # 测试（默认离线套件：137 个，不含真模型 e2e）
 python -m pytest tests -q

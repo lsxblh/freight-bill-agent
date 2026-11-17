@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from shipping_billing.extract.document_extractor import DocumentExtractor
-from shipping_billing.ingest import OcrClient, load_document
+from freight_bill.extract.document_extractor import DocumentExtractor
+from freight_bill.ingest import OcrClient, load_document
 
 
 def _make_xlsx(path: Path) -> None:

@@ -10,7 +10,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Iterable
 
-LOGGER_NAME = "shipping_billing"
+LOGGER_NAME = "freight_bill"
 
 
 def get_logger(name: str | None = None) -> logging.Logger:

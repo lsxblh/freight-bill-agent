@@ -16,9 +16,9 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from shipping_billing.config import Settings
-from shipping_billing.extract import llm_extractor
-from shipping_billing.extract.llm_extractor import LlmDocument, LlmExtractor
+from freight_bill.config import Settings
+from freight_bill.extract import llm_extractor
+from freight_bill.extract.llm_extractor import LlmDocument, LlmExtractor
 
 TEXT = "ARRIVAL NOTICE\nRELEASE DATE: 10/19/2026\nOn Carriage Additional USD 245.00"
 

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from shipping_billing.finance.posting import decide_posting
-from shipping_billing.matching.ledger import BillLine, Ledger
-from shipping_billing.matching.matcher import match_charge
-from shipping_billing.models import ChargeLine, DocumentIdentifiers, ExtractedDocument
+from freight_bill.finance.posting import decide_posting
+from freight_bill.matching.ledger import BillLine, Ledger
+from freight_bill.matching.matcher import match_charge
+from freight_bill.models import ChargeLine, DocumentIdentifiers, ExtractedDocument
 
 ENTITY = "NEPTUNE SHIPPING LIMITED"
 

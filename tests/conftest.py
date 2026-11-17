@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from shipping_billing.config import PROJECT_ROOT, Settings
+from freight_bill.config import PROJECT_ROOT, Settings
 
 SAMPLES = PROJECT_ROOT / "data" / "samples"
 LEDGER = PROJECT_ROOT / "data" / "ledger" / "existing_bills.json"

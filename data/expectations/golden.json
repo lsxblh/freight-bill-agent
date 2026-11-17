@@ -1,5 +1,5 @@
 {
-  "description": "样例数据的金标准：python -m shipping_billing eval 会逐条比对。",
+  "description": "样例数据的金标准：python -m freight_bill eval 会逐条比对。",
   "entity": "NEPTUNE SHIPPING LIMITED",
   "cases": [
     {

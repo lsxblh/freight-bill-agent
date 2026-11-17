@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "shipping-billing-agent"
+name = "freight-bill-agent"
 version = "1.0.0"
 description = "多格式文档解析的航运智能账单助手（AI Agent）：EML/PDF/图片/Excel/Word → 标准账单 JSON"
 readme = "README.md"
@@ -29,10 +29,10 @@ dev = ["pytest>=8.0"]
 xls = ["xlrd>=2.0"]
 
 [project.scripts]
-shipping-billing = "shipping_billing.cli:main"
+shipping-billing = "freight_bill.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["shipping_billing*"]
+include = ["freight_bill*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

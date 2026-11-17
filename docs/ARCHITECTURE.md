@@ -7,7 +7,7 @@
 
 ## 1. 总体数据流：四段式 LangGraph
 
-编排收敛为四段式 StateGraph（`shipping_billing/graph/graph.py`），
+编排收敛为四段式 StateGraph（`freight_bill/graph/graph.py`），
 `pipeline.py` 的 `BillingAgent` 是图的薄封装（批次循环、运行日志、汇总输出）。
 贯穿原则：**综合 agent 负责"理解和提议"，死规则尾巴负责"把关和落账"**。
 

@@ -10,7 +10,7 @@
 | 处理文件数 | 4 |
 | 解析单据数 | 4 |
 | 输出记录数 | 7 |
-| 总耗时 | 0.98s |
+| 总耗时 | 0.94s |
 | 新增账单 | 1 |
 | 更新账单 | 1 |
 | 无需变更 | 2 |
@@ -140,10 +140,10 @@
 
 | 文件 | 状态 | 耗时(ms) | 记录数 | 错误 |
 |---|---|---|---|---|
-| PDF 示例账单2.pdf | ok | 726 | 3 | - |
-| PDF示例账单1.pdf | ok | 76 | 1 | - |
-| 图片示例.png | ok | 23 | 2 | - |
-| 深圳容宇 PRE-ALERT SSZSE26093128 VASINGER LLC 1x40HQ  CNTR NO._ TIIU8975975   MBL NO._ OOLU4055331281  Arrived time 2026-10-30.eml | ok | 146 | 1 | - |
+| PDF 示例账单2.pdf | ok | 697 | 3 | - |
+| PDF示例账单1.pdf | ok | 67 | 1 | - |
+| 图片示例.png | ok | 22 | 2 | - |
+| 深圳容宇 PRE-ALERT SSZSE26093128 VASINGER LLC 1x40HQ  CNTR NO._ TIIU8975975   MBL NO._ OOLU4055331281  Arrived time 2026-10-30.eml | ok | 138 | 1 | - |
 
 ## 7. 评测指标
 
@@ -169,4 +169,4 @@
 
 ---
 
-> 本报告由 `python -m shipping_billing` 自动生成。所有记录均由确定性规则产出，可复现。
+> 本报告由 `python -m freight_bill` 自动生成。所有记录均由确定性规则产出，可复现。

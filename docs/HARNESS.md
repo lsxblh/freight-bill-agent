@@ -113,7 +113,7 @@ LLM 通道 ──┘
 
 ## 4. 评测（Regression Gate）
 
-`python -m shipping_billing eval`：
+`python -m freight_bill eval`：
 
 ```
 recall / precision / operation_accuracy / posting_accuracy / 字段级准确率
@@ -121,7 +121,7 @@ recall / precision / operation_accuracy / posting_accuracy / 字段级准确率
 ```
 
 * 金标准 `data/expectations/golden.json` 是**人写的**（不是从输出反抄的），所以能真正发现回归；
-* CI 里 `pytest -q && python -m shipping_billing eval` 一起跑，任一失败即阻断；
+* CI 里 `pytest -q && python -m freight_bill eval` 一起跑，任一失败即阻断；
 * 指标口径（按 `文件+费用名+金额` 对齐）写死在 `harness/evaluation.py`，避免"换个口径就 100%"。
 
 ---

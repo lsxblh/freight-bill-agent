@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from shipping_billing.models import ChargeLine, ExtractedDocument, Provenance
-from shipping_billing.validation.validators import (
+from freight_bill.models import ChargeLine, ExtractedDocument, Provenance
+from freight_bill.validation.validators import (
     WARNING,
     has_blocking,
     is_container_valid,

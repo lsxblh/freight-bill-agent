@@ -1,4 +1,4 @@
-"""python -m shipping_billing 入口。"""
+"""python -m freight_bill 入口。"""
 
 from __future__ import annotations
 

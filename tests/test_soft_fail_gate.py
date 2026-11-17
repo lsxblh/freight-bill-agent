@@ -19,18 +19,18 @@ from pathlib import Path
 
 import pytest
 
-from shipping_billing.config import Settings
-from shipping_billing.extract.llm_extractor import LlmCharge, LlmDocument
-from shipping_billing.graph.judge import (
+from freight_bill.config import Settings
+from freight_bill.extract.llm_extractor import LlmCharge, LlmDocument
+from freight_bill.graph.judge import (
     JudgeDecision,
     code_gate,
     compute_metrics,
     run_gate,
 )
-from shipping_billing.graph.repair import RepairAgent
-from shipping_billing.ingest.ocr_client import OcrOutcome
-from shipping_billing.models import RawDocument
-from shipping_billing.pipeline import BillingAgent
+from freight_bill.graph.repair import RepairAgent
+from freight_bill.ingest.ocr_client import OcrOutcome
+from freight_bill.models import RawDocument
+from freight_bill.pipeline import BillingAgent
 
 #: 干净的 canned 文本：规则抽不出字段，但"读得出来"。无裁判时闸门必须放行，
 #: 字段全部由假 LLM 草稿提供（与票01/02 注入回归同一套路）。

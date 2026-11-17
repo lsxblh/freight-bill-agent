@@ -127,7 +127,7 @@ def build_markdown(
     lines.append("---")
     lines.append("")
     lines.append(
-        "> 本报告由 `python -m shipping_billing` 自动生成。"
+        "> 本报告由 `python -m freight_bill` 自动生成。"
         + ("所有记录均由确定性规则产出，可复现。" if deterministic else "本批次包含模型推理，结果可能随模型版本变化。")
     )
     lines.append("")

@@ -6,8 +6,8 @@
 
 ## 一、踩过的坑（已修，留教训）
 
-- `[已修]` 票00 PDF 费用表粘连：pypdf plain 把 PDF2 费用表粘成 269 字符整行，丢 3 条费用 + 单号贪心吞尾 `DC-108478D/C`。修法是**按页**自适应回退 layout（`shipping_billing/ingest/pdf_loader.py:21-37,56-57`，`_FUSED_LINE_LIMIT=220`+`_FUSED_CHARGE_SIGNAL`），不能全局切 layout——PDF1 在 layout 下反而金额粘描述。教训：回退策略要按页判定，别一刀切。
-- `[已修]` 票00 签发方粘连：`BALANCE DUE TO` 与 company 粘成 `TONEPTUNE`，`shipping_billing/extract/rules.py:235-236` 把 `TO\s+` 改 `TO\s*`；`rules.py:167-169` `_trim_company` 先剥尾部"币种+金额"再剥币种/括号。教训：OCR/文本粘连要在正则留零宽余地。
+- `[已修]` 票00 PDF 费用表粘连：pypdf plain 把 PDF2 费用表粘成 269 字符整行，丢 3 条费用 + 单号贪心吞尾 `DC-108478D/C`。修法是**按页**自适应回退 layout（`freight_bill/ingest/pdf_loader.py:21-37,56-57`，`_FUSED_LINE_LIMIT=220`+`_FUSED_CHARGE_SIGNAL`），不能全局切 layout——PDF1 在 layout 下反而金额粘描述。教训：回退策略要按页判定，别一刀切。
+- `[已修]` 票00 签发方粘连：`BALANCE DUE TO` 与 company 粘成 `TONEPTUNE`，`freight_bill/extract/rules.py:235-236` 把 `TO\s+` 改 `TO\s*`；`rules.py:167-169` `_trim_company` 先剥尾部"币种+金额"再剥币种/括号。教训：OCR/文本粘连要在正则留零宽余地。
 - `[已修]` 票01 假实现签名对不上：第一版假 LLM 凭印象写，对不上真实 `.extract(text, *, filename, kind)`。教训：**写假实现/金断言前先读被调方真实签名与输出装配代码**。受控面：假 LLM=`.enabled/.extract/.stats`；假 OCR=`.settings/.process_file/._load_cache(sha)/.stats`（pdf_loader 直接调 `_load_cache`）。LLM 合并提示落 `audit_trail.warnings` 而非 `ai_reasoning`。
 - `[已修]` 票02 langgraph 导入：1.2.11 的 `CompiledStateGraph` 顶层导不到，须 `from langgraph.graph.state import CompiledStateGraph`。
 - `[已修]` 票02 失败隔离测不到：现有 loader 容错太彻底，自然样本触发不了 ingest 异常，须 mock 注入 `load_document` 才能验证单文件失败隔离。教训：容错好的代码要靠注入故障测边界。

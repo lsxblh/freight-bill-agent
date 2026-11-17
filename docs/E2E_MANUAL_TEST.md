@@ -15,7 +15,7 @@ key 不用手动设：`.env` 里的 `LLM_API_KEY` 会在程序导入配置时自
 ## 2. 唯一一条命令（复制整行执行）
 
 ```
-python -m shipping_billing run --inputs data/samples --ocr-mode cache --out-dir output/e2e_manual --verbose
+python -m freight_bill run --inputs data/samples --ocr-mode cache --out-dir output/e2e_manual --verbose
 ```
 
 - `--verbose`：把每一段（ingest/extract/synthesize/tail）逐文件、逐条费用的动作打成 DEBUG 日志，这就是"全流程"。

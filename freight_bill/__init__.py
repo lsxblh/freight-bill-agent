@@ -3,7 +3,7 @@
 多格式文档解析的航运智能账单助手智能体（AI AGENT）。
 
 对外主要入口：
-    from shipping_billing import BillingAgent, Settings
+    from freight_bill import BillingAgent, Settings
     result = BillingAgent(Settings()).run([...paths...])
 """
 
