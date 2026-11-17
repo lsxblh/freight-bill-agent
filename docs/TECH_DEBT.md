@@ -66,3 +66,10 @@
 - 经验：易混字母集 `_CONFUSABLE_LETTERS` 是启发式，OCR 混淆模式变化时需调整（已有回归钉子）。
 - 语义待明确：PENDING_REVIEW≠failure 的边界建议写进 GLOSSARY。
 - 落地：`graph/judge.py` compute_metrics:100/code_gate:141/LlmJudge:184/run_gate:264；`graph/repair.py` RepairAgent:51/build_pending_review_record:88；`graph.py` 仅 ingest 路由区 gate:140/repair:147/pending_review:160/route_after_gate:272（重试≤2）；`config.py:98-103` gate_min_confidence=0.5/ingest_max_retries=2/judge_enabled/judge_model；`state.py:51-54`；`dispatcher.py:49`/`pdf_loader.py:68,89` force_ocr；`pipeline.py` judge/repair 注入缝。裁判默认关、离线退化纯代码指标。
+
+### 票05 audit_trail 补齐 + 尾巴交叉验证（106 绿，合并后 118，已 merge）
+- 落地：`models.py:209-217` AuditTrail 增 quantity/unit_rate/subtotal/tax/source_snippet（顶层六字段不动）；`pipeline_utils.py:247-251` assemble_record 两路共用装配；新增 `graph/crosscheck.py` 落账前复用 validators(金额重算)/matcher.match_charge(认亲)/posting.decide_posting(四要素方向)+agent 低置信<0.5，任一不一致→_downgrade_to_pending（PENDING_REVIEW、清空 updates、不落账）；`graph.py` 仅 tail:169+import:30；`tests/test_tail_crosscheck.py` 4 条（含 test_agent_wrong_direction_proposal_blocked_by_tail）。
+- 经验/坑：低置信阈值须**严格<0.5**（基线 test_agent_keeps_unknown_charge_name_no_fabrication 用 0.5 期望 CREATE，边界值即契约）；认亲复查须在 tail 时跑（跑完后重跑会因 CREATE 已落账产生假性不一致）；crosscheck 放 graph/ 而非 validation/（validation 已引 pipeline_utils 会循环）。
+- 欠债/候选：_MONEY_ISSUE_CODES 含上游已阻断的 AMOUNT_MISSING/CURRENCY_INVALID，属有意独立复核、略冗余；方向复查"仅确定矛盾才拦"、规则拿不准不覆盖 agent 疑难——如需更强方向把关属行为变更、需拍板。
+- 语义：rules.extract_totals 命中 TOTAL 模式即 subtotal/tax=None，真实样例全 None 属正常非 bug。
+- 票06 注意：改综合 agent 默认启用/必需 key 会改默认行为，须显式更新评测预期；ChatAgentLlm 已就位（票04）直接接。

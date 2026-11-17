@@ -4,7 +4,7 @@
 
 **Blocked by:** 04
 
-**Status:** done
+**Status:** done (commits bd1f5e2+3c22530, 106 passed, merged)
 
 - [x] audit_trail 含数量/单价/小计/税额/原文片段，顶层六字段不变
 - [x] 尾巴落账前对金额/匹配/方向做确定性交叉验证（复用现有代码）
