@@ -62,10 +62,21 @@ class BillingAgent:
         *,
         ledger: Ledger | None = None,
         ocr_client: OcrClient | None = None,
+        llm: LlmExtractor | None = None,
     ) -> None:
+        """初始化编排器。
+
+        Args:
+            settings: 运行配置；缺省时从环境变量构造。
+            ledger: 台账；缺省时按 settings.ledger_path 加载。
+            ocr_client: OCR 客户端注入缝；缺省时按配置构造真实客户端。
+            llm: LLM 抽取器注入缝；测试/演示可注入假实现，
+                缺省时按配置构造真实抽取器。注入优先，编排层不再
+                无条件硬造客户端。
+        """
         self.settings = settings or Settings.from_env()
         self.ocr = ocr_client or OcrClient(self.settings)
-        self.llm = LlmExtractor(self.settings)
+        self.llm = llm or LlmExtractor(self.settings)
         self.extractor = DocumentExtractor(self.settings, self.llm)
         self.ledger = ledger if ledger is not None else Ledger.load(
             self.settings.ledger_path or "", entity=self.settings.accounting_entity

@@ -8,40 +8,18 @@
 * 两个抽取通道共享同一份输入快照，互不阻塞；
 * 每个节点都是纯函数，可单测、可回放、可在中间插入缓存/重试;
 * 需要换模型、加检索、加工具时，只改图不改业务代码。
+
+依赖方向（票01 起单向）：本模块只依赖抽取层，抽取层不再反向 import
+本模块。单据抽取链 build_document_chain 已移入
+extract.document_extractor，这里仅保留明细入账链与兼容再导出。
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from .extract.document_extractor import (
-    llm_node_factory,
-    merge_node,
-    normalize_node,
-    rule_node,
-)
-from .extract.llm_extractor import LlmExtractor
-
-
-def build_document_chain(llm: LlmExtractor | None = None):
-    """单据抽取链（输入 {"raw": RawDocument}）。"""
-    from langchain_core.runnables import RunnableLambda, RunnableParallel
-
-    rules_branch = RunnableLambda(rule_node)
-    llm_branch = RunnableLambda(llm_node_factory(llm))
-
-    def _collect(results: dict[str, Any]) -> dict[str, Any]:
-        """两条分支各自返回 {**payload, ...}，这里收敛成 merge_node 需要的形状。"""
-        merged = dict(results.get("rules") or {})
-        merged["llm"] = (results.get("llm") or {}).get("llm")
-        return merged
-
-    return (
-        RunnableParallel(rules=rules_branch, llm=llm_branch)
-        | RunnableLambda(_collect)
-        | RunnableLambda(merge_node)
-        | RunnableLambda(normalize_node)
-    )
+# 兼容再导出：单据抽取链的唯一定义在抽取层，避免编排层↔抽取器循环依赖。
+from .extract.document_extractor import build_document_chain
 
 
 def build_record_chain(context: dict[str, Any]):

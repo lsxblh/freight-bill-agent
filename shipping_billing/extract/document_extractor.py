@@ -1,9 +1,13 @@
 """单据抽取编排：规则 → LLM（可选）→ 融合 → 二次标准化。
 
 这里的函数都是"纯节点"，便于被 LangChain Runnable 串成链，也便于单测。
+单据抽取链 ``build_document_chain`` 也定义在本模块：抽取编排只依赖
+抽取层自身，不再反向 import 顶层编排层（agent），依赖保持单向。
 """
 
 from __future__ import annotations
+
+from typing import Any
 
 from ..config import Settings
 from ..io_utils import get_logger
@@ -70,6 +74,37 @@ def normalize_node(doc: ExtractedDocument) -> ExtractedDocument:
 
 
 # --------------------------------------------------------------------------- #
+# 单据抽取链
+# --------------------------------------------------------------------------- #
+def build_document_chain(llm: LlmExtractor | None = None):
+    """单据抽取链（输入 {"raw": RawDocument}）。
+
+    Args:
+        llm: LLM 抽取器；None 或未启用时 LLM 分支返回空，仅走规则。
+
+    Returns:
+        Runnable 链：规则 ∥ LLM → 融合 → 标准化，输出 ExtractedDocument。
+    """
+    from langchain_core.runnables import RunnableLambda, RunnableParallel
+
+    rules_branch = RunnableLambda(rule_node)
+    llm_branch = RunnableLambda(llm_node_factory(llm))
+
+    def _collect(results: dict[str, Any]) -> dict[str, Any]:
+        """两条分支各自返回 {**payload, ...}，这里收敛成 merge_node 需要的形状。"""
+        merged = dict(results.get("rules") or {})
+        merged["llm"] = (results.get("llm") or {}).get("llm")
+        return merged
+
+    return (
+        RunnableParallel(rules=rules_branch, llm=llm_branch)
+        | RunnableLambda(_collect)
+        | RunnableLambda(merge_node)
+        | RunnableLambda(normalize_node)
+    )
+
+
+# --------------------------------------------------------------------------- #
 # 附件上下文
 # --------------------------------------------------------------------------- #
 def merge_attachment_context(
@@ -129,8 +164,6 @@ class DocumentExtractor:
     def chain(self):
         """LangChain 链：规则 ∥ LLM → 融合 → 标准化。"""
         if self._chain is None:
-            from ..agent import build_document_chain
-
             self._chain = build_document_chain(self.llm)
         return self._chain
 
@@ -172,6 +205,7 @@ class DocumentExtractor:
 
 __all__ = [
     "DocumentExtractor",
+    "build_document_chain",
     "llm_node_factory",
     "merge_attachment_context",
     "merge_node",
