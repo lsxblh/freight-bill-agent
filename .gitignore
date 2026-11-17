@@ -12,6 +12,7 @@ venv/
 .env
 .work/
 output/
+data/llm_cache/
 .DS_Store
 Thumbs.db
 .idea/
