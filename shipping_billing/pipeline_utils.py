@@ -242,6 +242,13 @@ def assemble_record(payload: dict[str, Any]) -> RecordAssessment:
         matched_bill_id=line.bill_id if line is not None else None,
         match_rule=match.rule_label if match.matched else None,
         field_changes=changes,
+        # 票05：补齐数量/单价/小计/税额/原文片段，全部取自草稿真实数据，
+        # 缺失一律 None（不虚构）。小计/税额为单据级，数量/单价/片段为费用行级。
+        quantity=charge.quantity,
+        unit_rate=charge.unit_rate,
+        subtotal=doc.subtotal,
+        tax=doc.tax,
+        source_snippet=charge.source_line or (provenance.snippet if provenance else None),
     )
 
     record = OutputRecord(

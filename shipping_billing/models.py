@@ -205,6 +205,16 @@ class AuditTrail(BaseModel):
     agent_confidence: float | None = None
     #: 综合 agent 判出的我方角色候选 issuer/recipient（票04）；None 表示未判出。
     agent_role: str | None = None
+    #: 费用数量（票05）；取自费用行草稿，未给出时为 None，不虚构。
+    quantity: float | None = None
+    #: 费用单价（票05）；取自费用行草稿，未给出时为 None，不虚构。
+    unit_rate: float | None = None
+    #: 单据小计（票05，单据级）；取自草稿 subtotal，未单独列示时为 None。
+    subtotal: float | None = None
+    #: 单据税额（票05，单据级）；取自草稿 tax，未单独列示时为 None。
+    tax: float | None = None
+    #: 原文片段（票05）：费用行的原始证据行，供人工复核无需翻原件。
+    source_snippet: str | None = None
 
 
 class OutputRecord(BaseModel):
