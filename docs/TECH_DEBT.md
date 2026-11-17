@@ -99,3 +99,11 @@
 - 经验/坑：str(ChatPromptValue) 是 repr（换行转义）→断言提示词内容须 .to_string()；gate_reason 语义="最近一次不放行的原因"、放行即清空→反馈须在 repair 节点留存副本。
 - 债/改进：reextract 对文本层本就干净的 PDF 重 OCR 未必更准，属"换路重试"既定语义（用户拍板 A）；stats 已删，如需可观测性须先接 pipeline 汇总真实读者再加，勿回退无读者死代码；judge() 后续改 _build 勿退回直调 self._chain。
 - 审查 blocker/major 至此闭环；剩余 minor（agents.py 死字段/回落无审计标记/两草稿偏差/提议名不留痕）待票07 合并后另批处理或入台账。
+
+### 票07 综合 agent 提示词强化（e2e operation 0.4286→0.8571、posting 0.5→1.0，已 merge）
+- 落地：仅 `graph/agents.py:40-114` SYSTEM_PROMPT（+61/-5）。五处强化：输出边界(agent 只产角色候选+标准名+理由+置信度，不输出 operation)；operation 四值语义+判定依据(补全空字段不算更新)；四要素角色推理(**四要素是推理输入不是齐全清单——接收方缺失但签发方明确是我方时 role=issuer 仍成立**，PDF2 recipient=None 误判根因)；置信度标定(事实明确 0.85-0.95 且不低于 0.5 防 crosscheck 误拦)；9 个对照 few-shot。match_charge 工具描述补 matched_line 返回字段。
+- e2e before/after（qwen3.8-flash,4 样例,21m06s）：recall/precision 1.0/1.0 不变；operation 0.4286(3/7)→0.8571(6/7)；posting 0.5(2/4)→1.0(4/4)。7 条 agent_confidence 全非空。
+- 【剩余质量债·需拍板】唯一剩余差异 PDF1 On Carriage NO_CHANGE→UPDATE：根因=规则抽不出 PDF1 日期(document_date=None)，真 LLM 草稿补位 2026-10-19(取原文 RELEASE DATE)，`extract/merge.py:45-47` "LLM 补位"无条件采纳，台账 BILL-2002 日期=2026-10-26→`pipeline_utils.py:102-117` 判 overwrite→UPDATE。属草稿层补位策略，synthesize 提示词修不了。候选修法(均行为变更需拍板)：①草稿提示词约束"单据日期取签发/到货日期,不取 release/notice 日期"；②融合层对 LLM 补位日期降级(改 compute_field_changes 语义,影响面大)；③规则缺失日期时不补位。
+- 经验：提示词杠杆边界=operation 由尾巴死规则算(pipeline_utils.py:124-155 _decide_operation)，agent 只经 role→posting 与自标置信度影响它；few-shot 内部自洽=每条示例事实须完整支撑提案每个字段(例2/3 补"签发方=记账主体"后重启 e2e)。
+- 观察：PDF2 真草稿 issuer 误读 "Pilot Aiship Tech co., Ltd."(规则 NEPTUNE 正确)，融合"规则为准"+冲突 warning+置信×0.8 正确兜底；agent 在冲突 warning 下信任规则值，若后续模型被 warning 带偏可能回归。
+- 审查剩余 minor 待另批：agents.py:76-77 Proposal.charge_item/standardized 死字段、:345-347 装配异常回落无审计标记、:217-221 拿不到两份独立草稿、:139,151-159 提议名不入 audit_trail。

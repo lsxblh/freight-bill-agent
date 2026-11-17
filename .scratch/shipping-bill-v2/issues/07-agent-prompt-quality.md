@@ -4,7 +4,7 @@
 
 **Blocked by:** 06
 
-**Status:** done (commits 51a780a+票文件提交, 126 passed/1 deselected, e2e operation 0.8571/posting 1.0, 待 lead merge)
+**Status:** done (commits 51a780a+2c17741, merged; 离线 133 绿, e2e operation 0.8571/posting 1.0)
 
 - [x] synthesize 提示词含 operation 四值语义+判定依据+对照 few-shot
 - [x] 提示词含 AR/AP 方向推理要点+debit/credit note 方向 few-shot
