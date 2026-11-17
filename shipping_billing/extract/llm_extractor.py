@@ -58,6 +58,7 @@ SYSTEM_PROMPT = """你是国际货运代理行业的账单信息抽取专家。
 只根据给定的单据文本抽取信息，绝对不要编造：文本里没有的字段一律返回 null。
 金额只保留数字（不要千分位、不要货币符号），币种必须是三位 ISO 4217 代码。
 付款方式只允许 PP（预付）、CC（到付）、COD 三种。
+document_date 只取单据本身的签发/账单/到货日期（invoice date / bill date / arrival date）；release/notice/RELEASE DATE 等通知类日期不是单据日期，不得填入。反例："RELEASE DATE: 10/19/2026" 是放货通知日期，不是单据日期；文本里没有签发/账单/到货日期时 document_date 返回 null。
 每个费用项目单独输出一条 charges 记录。"""
 
 USER_PROMPT = """请从下面的单据文本中抽取结构化费用信息。
@@ -129,6 +130,9 @@ class LlmExtractor:
             feedback: 补救重试携带的闸门失败原因（票08）。非空时作为
                 "上次解析闸门反馈"段喂进草稿提示，并计入缓存键——带反馈的
                 重试不会命中首次抽取的缓存，保证重试与首次真正不同。
+
+        缓存键含提示词指纹（票09）：SYSTEM/USER 模板或输出 Schema 任一
+        改动都会自动失效旧草稿缓存；提示词不变时键稳定，缓存行为不变。
         """
         if not self.enabled:
             return None
@@ -138,10 +142,16 @@ class LlmExtractor:
         schema_text = json.dumps(
             LlmDocument.model_json_schema(), ensure_ascii=False, separators=(",", ":")
         )
+        # 票09：提示词指纹 = SYSTEM/USER 模板 + 输出 Schema 的 sha256 前缀。
+        # 计入缓存键后，提示词改动自动失效旧草稿缓存（否则 e2e/生产会复用
+        # 旧提示词的 stale 草稿，看不到改进）；提示词不变时键稳定。
+        prompt_fp = hashlib.sha256(
+            (SYSTEM_PROMPT + USER_PROMPT + schema_text).encode("utf-8")
+        ).hexdigest()[:12]
         # 控制上下文长度，避免超长 PDF 把费用表挤掉
         max_chars = 12000
         clipped = text if len(text) <= max_chars else text[:max_chars] + "\n...[truncated]"
-        key_material = f"{self.settings.llm_model}|{filename}|{clipped}"
+        key_material = f"{prompt_fp}|{self.settings.llm_model}|{filename}|{clipped}"
         if feedback:
             # 反馈参与缓存键：同一文本带不同反馈视为不同请求；无反馈时键不变。
             key_material += f"|feedback={feedback}"

@@ -120,8 +120,6 @@ class Proposal:
 
     Attributes:
         role: 我方角色候选 issuer/recipient；None 表示判不出（尾巴转人工）。
-        charge_item:  reconciled 标准名（字典权威，装配仍以草稿标准名为准）。
-        standardized: 费用名是否被字典收录。
         reasons: agent 的推理理由，写入 audit_trail.ai_reasoning。
         confidence: agent 自标置信度，写入 audit_trail.agent_confidence。
         match: 确定性四级匹配结果（与认亲工具同源）。
@@ -129,8 +127,6 @@ class Proposal:
     """
 
     role: str | None
-    charge_item: str
-    standardized: bool
     reasons: list[str] = field(default_factory=list)
     confidence: float = 0.5
     match: MatchResult = field(default_factory=MatchResult)
@@ -192,7 +188,6 @@ class ComprehensiveAgent:
             role = None
         reasons = [str(r) for r in (raw.get("reasons") or [])]
         confidence = _clamp_confidence(raw.get("confidence", 0.5))
-        charge_item = str(raw.get("charge_item") or charge.charge_item)
 
         # 认亲与方向都是确定性事实：认亲同源四级匹配，方向由角色经死规则落出。
         match = match_charge(charge, doc, tools.ledger, settings)
@@ -206,8 +201,6 @@ class ComprehensiveAgent:
         )
         return Proposal(
             role=role,
-            charge_item=charge_item,
-            standardized=charge.standardized,
             reasons=reasons,
             confidence=confidence,
             match=match,
@@ -307,8 +300,6 @@ class ComprehensiveAgent:
         reasons.extend(posting.reasoning)
         return Proposal(
             role=posting.role,
-            charge_item=charge.charge_item,
-            standardized=charge.standardized,
             reasons=reasons,
             confidence=posting.confidence,
             match=match,
@@ -400,7 +391,10 @@ def synthesize_charge(
         return assessment
     except Exception:  # noqa: BLE001 - agent 异常不拖垮单条费用，回落确定性链
         logger.exception("综合 agent 装配失败，回落确定性入账链: %s", doc.effective_reference())
-        return owner.record_chain.invoke(payload)
+        assessment = owner.record_chain.invoke(payload)
+        # 票09：回落留痕（additive，不改六字段）——生产可区分真 agent 与静默回落。
+        assessment.record.audit_trail.warnings.append("agent 装配异常，回落确定性链")
+        return assessment
 
 
 __all__ = [
