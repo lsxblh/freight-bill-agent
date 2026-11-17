@@ -113,12 +113,6 @@ class Ledger(BaseModel):
             if not line.accounting_entity or line.accounting_entity.strip().lower() == key
         ]
 
-    def by_reference(self, reference: str | None) -> list[BillLine]:
-        key = norm_key(reference)
-        if not key:
-            return []
-        return [line for line in self.lines if norm_key(line.reference_no) == key]
-
     def candidate_lines(
         self,
         *,

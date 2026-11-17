@@ -167,9 +167,9 @@ def assemble_record(payload: dict[str, Any]) -> RecordAssessment:
     line = match.line
     changes = compute_field_changes(doc, charge, line, settings) if line is not None else []
 
-    confidence, factors = score_record(
+    confidence = score_record(
         doc=doc, charge=charge, posting=posting, matched=match.matched, issues=issues
-    )
+    )[0]
     if duplicate_of:
         confidence = round(max(0.05, confidence - 0.2), 2)
 

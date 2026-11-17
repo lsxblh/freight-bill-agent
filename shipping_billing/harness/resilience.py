@@ -1,4 +1,4 @@
-"""重试与熔断：把"偶发故障"与"系统故障"区分开。"""
+"""重试：把"偶发故障"与"系统故障"区分开。"""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ import functools
 import logging
 import random
 import time
-from dataclasses import dataclass, field
 from typing import Any, Callable, TypeVar
 
 T = TypeVar("T")
@@ -53,40 +52,4 @@ def retry(
     return decorator
 
 
-@dataclass
-class CircuitBreaker:
-    """连续失败 N 次后熔断，避免整批任务被单个坏依赖拖死。"""
-
-    failure_threshold: int = 3
-    reset_timeout: float = 60.0
-    failures: int = 0
-    opened_at: float | None = None
-    _logger: logging.Logger | None = field(default=None, repr=False)
-
-    @property
-    def is_open(self) -> bool:
-        if self.opened_at is None:
-            return False
-        if time.time() - self.opened_at >= self.reset_timeout:
-            # 半开：允许再试一次
-            self.opened_at = None
-            self.failures = 0
-            return False
-        return True
-
-    def record_success(self) -> None:
-        self.failures = 0
-        self.opened_at = None
-
-    def record_failure(self) -> None:
-        self.failures += 1
-        if self.failures >= self.failure_threshold and self.opened_at is None:
-            self.opened_at = time.time()
-            if self._logger:
-                self._logger.warning("熔断器打开，%.0fs 内不再调用该依赖", self.reset_timeout)
-
-    def allow(self) -> bool:
-        return not self.is_open
-
-
-__all__ = ["CircuitBreaker", "retry"]
+__all__ = ["retry"]

@@ -11,15 +11,12 @@
 
 依赖方向（票01 起单向）：本模块只依赖抽取层，抽取层不再反向 import
 本模块。单据抽取链 build_document_chain 已移入
-extract.document_extractor，这里仅保留明细入账链与兼容再导出。
+extract.document_extractor，这里仅保留明细入账链。
 """
 
 from __future__ import annotations
 
 from typing import Any
-
-# 兼容再导出：单据抽取链的唯一定义在抽取层，避免编排层↔抽取器循环依赖。
-from .extract.document_extractor import build_document_chain
 
 
 def build_record_chain(context: dict[str, Any]):
@@ -67,4 +64,4 @@ def build_record_chain(context: dict[str, Any]):
     )
 
 
-__all__ = ["build_document_chain", "build_record_chain"]
+__all__ = ["build_record_chain"]
