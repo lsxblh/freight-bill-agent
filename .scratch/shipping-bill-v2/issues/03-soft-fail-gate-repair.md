@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done (commits 748b4bd+8dba641, 108 passed, merged)
 
 - [x] 软失败闸门=代码指标+小模型裁判混合，裁判只判定不抽取
 - [x] 解析补救 agent 换路重试≤2，重试计数条件边生效

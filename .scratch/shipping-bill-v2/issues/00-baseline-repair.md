@@ -9,9 +9,9 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done (commit bd92cc3, 91 passed)
 
-- [ ] 全量 `pytest` 在 conda code 环境全绿（含端到端 7 条金断言）
-- [ ] 只修基线 bug，不改变对外契约、不做架构重构
-- [ ] 修复处有对应回归测试佐证（先红后绿）
-- [ ] 不新增费用名字典条目、不改 OCR 网关契约
+- [x] 全量 `pytest` 在 conda code 环境全绿（含端到端 7 条金断言）
+- [x] 只修基线 bug，不改变对外契约、不做架构重构
+- [x] 修复处有对应回归测试佐证（先红后绿）
+- [x] 不新增费用名字典条目、不改 OCR 网关契约

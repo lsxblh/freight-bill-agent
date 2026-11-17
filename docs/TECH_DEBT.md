@@ -58,3 +58,11 @@
 - `[待处理]` 票06 把 agent 改"必需 key/默认启用"是行为变更，须显式更新评测预期（本票 agent_llm=None 故 eval 仍 7/7）。
 - `[需拍板]` agent 提议的 charge_item 仅 advisory（输出标准名仍字典权威）；若要把 agent reconciled 名写进 audit/主输出 = 新增范围，需拍板。
 - 落地：`posting.py` 抽 `_finalize_direction(:99)` 共用 + `posting_from_role(:160)`，`decide_posting` 逐字不变；`models.py:204-207` AuditTrail 增 `agent_confidence`/`agent_role`；逐条落账钉子在 agent 路径复现绿(`test_agent_preserves_per_charge_ledger_interleave`)；ReAct `MAX_ROUNDS=6` 不收敛/异常回落确定性。
+
+### 票03 软失败闸门 + 解析补救 agent（108 绿，已 merge）
+- 已修坑：金额混淆检测误报箱号/单号（`MRSU2571577,`、`NO.:GSDRHZMHK331281`）→端到端 5 红。修复：疑似混淆 token 须**整体**只由数字/小数点/千分位/易混字母组成且含至少一个易混字母（箱号含 M/R/U/N 等非易混字母天然排除）；回归钉子兜底。
+- 已修坑：text 模式图片读空救不回被误记 failure，撞 `test_ocr_modes_offline[text]` 的 `not result.failures`。修复：PENDING_REVIEW 是"主动转人工复核"非批次失败，`_pending_review_updates` 用 `hard` 区分（仅 ingest 硬崩溃计 failure）。
+- 欠债/候选改进：补救目前仅"文件级重 OCR + 带反馈重抽"两策略；**页级重 OCR 需改 OCR 网关契约（现为文件级）**，留后续票/需拍板。
+- 经验：易混字母集 `_CONFUSABLE_LETTERS` 是启发式，OCR 混淆模式变化时需调整（已有回归钉子）。
+- 语义待明确：PENDING_REVIEW≠failure 的边界建议写进 GLOSSARY。
+- 落地：`graph/judge.py` compute_metrics:100/code_gate:141/LlmJudge:184/run_gate:264；`graph/repair.py` RepairAgent:51/build_pending_review_record:88；`graph.py` 仅 ingest 路由区 gate:140/repair:147/pending_review:160/route_after_gate:272（重试≤2）；`config.py:98-103` gate_min_confidence=0.5/ingest_max_retries=2/judge_enabled/judge_model；`state.py:51-54`；`dispatcher.py:49`/`pdf_loader.py:68,89` force_ocr；`pipeline.py` judge/repair 注入缝。裁判默认关、离线退化纯代码指标。
