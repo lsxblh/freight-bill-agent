@@ -36,5 +36,9 @@ include = ["shipping_billing*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+# 默认离线套件不跑真模型端到端（e2e）；显式运行：pytest -m e2e（需 LLM_API_KEY）
+addopts = "-q -m 'not e2e'"
+markers = [
+    "e2e: 真模型联网端到端测试（默认不跑，无 key 优雅 skip，显式 -m e2e 启用）",
+]
 filterwarnings = ["ignore::DeprecationWarning"]

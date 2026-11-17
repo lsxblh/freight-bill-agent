@@ -27,6 +27,7 @@ from .config import Settings
 from .extract.document_extractor import DocumentExtractor
 from .extract.llm_extractor import LlmExtractor
 from .graph import build_billing_graph
+from .graph.agents import ChatAgentLlm
 from .graph.graph import RECURSION_LIMIT
 from .graph.judge import LlmJudge
 from .graph.repair import RepairAgent
@@ -40,6 +41,15 @@ from .pipeline_utils import RecordAssessment
 from .validation.validators import Issue, summarize
 
 logger = get_logger("pipeline")
+
+
+class MissingAgentKeyError(RuntimeError):
+    """命脉模式下综合 agent 不可用（无 key 且无注入）时抛出。
+
+    规格 Q5 已批准的行为变更：综合 agent 是命脉，无 API key 必须明确
+    报错，不静默降级到确定性链。仅当 settings.agent_required_key=True
+    （环境变量 AGENT_REQUIRED_KEY）时触发。
+    """
 
 
 @dataclass
@@ -86,6 +96,8 @@ class BillingAgent:
             agent_llm: 综合 agent 的 LLM 注入缝（票04）；受控面为
                 .enabled / .complete(prompt)->str。缺省 None 时综合段
                 沿用确定性入账链；注入启用实现时走 ReAct 工作台。
+                票06 命脉模式（settings.agent_required_key=True）下
+                必须可用：无 key 且无注入→构造抛 MissingAgentKeyError。
             judge: 软失败裁判注入缝（票03）；缺省时按 JUDGE_MODEL 配置
                 构造，未启用则为 None（退化为纯代码指标）。
             repair: 解析补救 agent 注入缝（票03）；缺省时用注入的 OCR
@@ -94,7 +106,7 @@ class BillingAgent:
         self.settings = settings or Settings.from_env()
         self.ocr = ocr_client or OcrClient(self.settings)
         self.llm = llm or LlmExtractor(self.settings)
-        self.agent_llm = agent_llm
+        self.agent_llm = self._resolve_agent_llm(agent_llm)
         self.extractor = DocumentExtractor(self.settings, self.llm)
         self.judge = judge if judge is not None else self._build_judge()
         self.repair = repair if repair is not None else RepairAgent(self.ocr, self.settings)
@@ -107,6 +119,42 @@ class BillingAgent:
         self._graph = None
         self._doc_bill_ids: dict[int, str] = {}
         self._duplicates: dict[tuple, str] = {}
+
+    # ------------------------------------------------------------------ #
+    def _resolve_agent_llm(self, agent_llm: Any) -> Any:
+        """解析综合 agent LLM：命脉模式把关，兼容模式保持票04 行为。
+
+        Args:
+            agent_llm: 主缝注入的实现（可为 None）。
+
+        Returns:
+            注入的实现原样返回；未注入且兼容模式返回 None（确定性链）；
+            未注入但命脉模式且配了 key 时默认启用 ChatAgentLlm。
+
+        Raises:
+            MissingAgentKeyError: 命脉模式（agent_required_key=True）下
+                未注入且无可用 key——明确报错，不静默降级。
+        """
+        if agent_llm is not None:
+            if self.settings.agent_required_key and not getattr(agent_llm, "enabled", False):
+                raise MissingAgentKeyError(
+                    "综合 agent 是本项目命脉（AGENT_REQUIRED_KEY=true）：注入的 agent_llm "
+                    "未启用（.enabled=False），拒绝静默降级。请注入启用的 agent_llm，"
+                    "或配置 LLM_API_KEY 并设 LLM_ENABLED=true；确需回退确定性链时请显式设 "
+                    "AGENT_REQUIRED_KEY=false。"
+                )
+            return agent_llm
+        if not self.settings.agent_required_key:
+            return None
+        if self.settings.llm_enabled and self.settings.llm_api_key:
+            # 命脉模式默认启用：有 key 就接真实适配器（懒构造，调用时才联网）。
+            return ChatAgentLlm(self.settings)
+        raise MissingAgentKeyError(
+            "综合 agent 是本项目命脉（AGENT_REQUIRED_KEY=true）：未配置 LLM_API_KEY "
+            "或未启用 LLM_ENABLED，且未注入可用的 agent_llm，拒绝静默降级。"
+            "请配置 LLM_API_KEY 并设 LLM_ENABLED=true，或经主缝注入 agent_llm；"
+            "确需回退确定性链时请显式设 AGENT_REQUIRED_KEY=false。"
+        )
 
     # ------------------------------------------------------------------ #
     def _build_judge(self) -> LlmJudge | None:
@@ -303,4 +351,4 @@ class BillingAgent:
         }
 
 
-__all__ = ["BillingAgent", "PipelineResult"]
+__all__ = ["BillingAgent", "MissingAgentKeyError", "PipelineResult"]

@@ -16,7 +16,7 @@ from .config import PROJECT_ROOT, Settings
 from .harness.evaluation import evaluate, load_expectations
 from .harness.report import build_markdown, write_markdown
 from .io_utils import ensure_dir, get_logger, write_json
-from .pipeline import BillingAgent
+from .pipeline import BillingAgent, MissingAgentKeyError
 
 logger = get_logger("cli")
 
@@ -155,6 +155,10 @@ def cmd_demo(args: argparse.Namespace) -> int:
 
 def cmd_eval(args: argparse.Namespace) -> int:
     settings = _settings_from_args(args)
+    # 回归闸门钉住离线确定性（票06 拍板 Q2）：不受命脉模式/LLM 环境变量
+    # 影响，7/7 可复现、绝不联网。真模型端到端质量另见 pytest -m e2e。
+    settings = settings.with_overrides(agent_required_key=False, llm_enabled=False)
+    print("eval 回归闸门：离线确定性模式（命脉模式与 LLM 草稿已钉住关闭）")
     if not settings.ledger_path:
         settings = settings.with_overrides(ledger_path=LEDGER_PATH)
     out_dir = Path(args.out_dir) if args.out_dir else PROJECT_ROOT / "output" / "eval"
@@ -253,7 +257,12 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%H:%M:%S",
     )
-    return args.func(args)
+    try:
+        return args.func(args)
+    except MissingAgentKeyError as exc:
+        # 命脉模式无 key：明确报错退出（退出码 2），不抛裸栈、不静默降级。
+        print(f"配置错误: {exc}", file=sys.stderr)
+        return 2
 
 
 __all__ = ["build_parser", "main"]

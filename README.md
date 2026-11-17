@@ -2,6 +2,10 @@
 
 > 用 Python + LangChain 实现的航运/货代账单智能体：把散落在 EML、PDF、扫描图片、Excel、Word 里的费用，
 > 自动解析成**可入账、可审计、可复现**的标准 JSON，并完成"新增账单 / 增量更新 / 无需变更 / 转人工"的判定。
+>
+> v2 采用**四段式 LangGraph 编排**（读进来 → 双路抽取 → 综合 agent → 死规则尾巴）：
+> 综合 agent 是命脉（必须配 API key），自主负责"理解与提议"；钱与输出契约由死规则尾巴把关落账，
+> 幻觉记不进账。架构取舍见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) 与 ADR-0001。
 
 ---
 
@@ -11,12 +15,22 @@
 # 1) 安装依赖（Python >= 3.10）
 pip install -r requirements.txt
 
-# 2) 一键演示：跑 data/samples 下 4 个真实样例，输出到 output/demo
+# 2) 配置综合 agent 的 API key（命脉模式：run/demo 默认必须有 key，无 key 明确报错）
+#    任意 OpenAI 兼容端点；也可写进 .env（LLM_API_KEY / LLM_ENABLED / LLM_MODEL / LLM_BASE_URL）
+export LLM_API_KEY=sk-xxx LLM_ENABLED=true LLM_MODEL=deepseek-chat LLM_BASE_URL=https://api.deepseek.com/v1
+
+# 3) 一键演示：跑 data/samples 下 4 个真实样例，输出到 output/demo
 python -m shipping_billing demo
 
-# 3) 与金标准对比，看完给指标
+# 4) 与金标准对比（回归闸门钉住离线确定性，无 key 也能跑、可复现）
 python -m shipping_billing eval
 ```
+
+> **命脉模式**：CLI/生产入口缺省 `AGENT_REQUIRED_KEY=true`——综合 agent 必须可用，
+> 无 key 时构造即报 `MissingAgentKeyError`（退出码 2），不静默降级。
+> 确需纯确定性回退时显式设 `AGENT_REQUIRED_KEY=false`（兼容模式）。
+> `eval` 是 7/7 回归闸门，内部钉住离线确定性，不受该开关影响；
+> 真模型端到端质量用 `pytest -m e2e` 单独验证（见 §6）。
 
 输出三个文件：
 
@@ -60,8 +74,16 @@ field_accuracy {'operation':1.0,'posting_type':1.0,'reference_no':1.0,'currency'
 shipping_billing/
 ├── config.py             # 全部配置（OCR/LLM/记账主体/阈值），CLI > .env > 默认
 ├── models.py             # 三层模型：原始证据 → 语义 → 标准输出
-├── pipeline.py           # 端到端编排（BillingAgent）
-├── agent.py              # LangChain Runnable 图：规则 ∥ LLM → 融合 → 标准化
+├── pipeline.py           # 图的薄封装：批次循环/运行日志/汇总输出（BillingAgent）
+├── agent.py              # 确定性入账链 + 兼容再导出（双路抽取已移入 extract/）
+├── graph/                # v2 四段式 LangGraph 编排
+│   ├── state.py          #    BillingState：单文件三层模型流转
+│   ├── graph.py          #    四段式 StateGraph 装配 + 条件边路由
+│   ├── judge.py          #    软失败闸门：代码指标 + 小模型裁判（JUDGE_MODEL）
+│   ├── repair.py         #    解析补救 agent：换策略重试 ≤ INGEST_MAX_RETRIES
+│   ├── agents.py         #    综合 agent（ReAct 工作台）+ ChatAgentLlm 真实适配器
+│   ├── tools.py          #    四确定性工具：认亲/读原文/查台账/查字典
+│   └── crosscheck.py     #    尾巴落账前钱关键项交叉验证
 ├── pipeline_utils.py     # 记录装配：匹配/方向/校验 → 标准 JSON + 变更集
 ├── ingest/               # ① 多格式解析
 │   ├── dispatcher.py     #    按扩展名+魔数分发，附件递归（最大 5 层）
@@ -89,7 +111,7 @@ data/
 ├── ocr_cache/            # OCR 结果回放（内容哈希命名）
 └── expectations/golden.json     # 金标准用例
 docs/                     # 设计文档
-tests/                    # 89 个单测 + 端到端回归
+tests/                    # 126 个离线测试（含端到端回归）+ 1 个真模型 e2e（显式 -m e2e）
 scripts/ocr_smoke_test.py # 真实 OCR API 连通性自测
 ```
 
@@ -97,7 +119,25 @@ scripts/ocr_smoke_test.py # 真实 OCR API 连通性自测
 
 ## 4. 核心设计
 
-### 4.1 三层数据模型：证据 → 语义 → 输出
+### 4.1 四段式编排：综合 agent 提议，死规则尾巴把关（v2）
+
+```
+读进来（软失败闸门 + 解析补救） → 双路抽取（规则草稿 ∥ LLM 草稿）
+    → 综合 agent（ReAct 工作台：认亲/读原文/查台账/查字典）
+    → 死规则尾巴（交叉验证 → 落账 → 六字段 JSON）
+```
+
+* **自主边界**：综合 agent 负责"理解与提议"（核对两稿、疑难认亲、AR/AP 推理），
+  自主决定何时调哪个工具；工具全部返回确定性事实（同输入同结果）。
+  提案须经尾巴钱关键项交叉验证（金额重算/认亲复查/四要素方向复查/低置信）
+  才能落账，任一不一致 → PENDING_REVIEW，**幻觉记不进账**。
+* **命脉模式**：综合 agent 必须配 API key（CLI 入口缺省 `AGENT_REQUIRED_KEY=true`），
+  无 key 明确报错、不静默降级；`AGENT_REQUIRED_KEY=false` 显式回退确定性链（兼容模式）。
+* **确定的事不让模型碰**：四级匹配、费用名字典、"角色→AR/AP"落账那一下都是死规则。
+* 架构取舍详见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) 与
+  [`docs/adr/0001`](docs/adr/0001-v2-comprehensive-agent-deterministic-tail.md)。
+
+### 4.2 三层数据模型：证据 → 语义 → 输出
 
 ```
 RawDocument(text/pages/tables/meta/attachments)   ← 一字不改的"证据"
@@ -109,7 +149,7 @@ OutputRecord(operation/document_info/transaction_party/charge_details/financial_
 
 **所有格式最终都收敛成 `RawDocument`**，抽取层完全不关心来源是邮件还是扫描件——这是能持续加格式的前提。
 
-### 4.2 抽取：确定性优先，LLM 补位
+### 4.3 抽取：确定性优先，LLM 补位
 
 ```
                  ┌── 规则抽取（金额/编号/日期/明细，可复现）──┐
@@ -124,7 +164,7 @@ RawDocument ─────┤                                          ├─�
 费用行解析不靠"猜列"，而是 8 种**列布局模板**按信息量降序尝试，并用"表头区块定位"限制搜索范围
 （例如 B/L 里 `SAPU2040689 C9950614 20ST 233PIECE(S) 43762 706.00` 这类行，绝不能被当成 706 美元的费用）。
 
-### 4.3 AR / AP：不是看单据类型，是看"我是谁"
+### 4.4 AR / AP：不是看单据类型，是看"我是谁"
 
 ```
 角色识别（我 = 签发方 or 接收方，公司名相似度）
@@ -137,7 +177,7 @@ RawDocument ─────┤                                          ├─�
 样例里这就是关键：同一批文件，把 `--entity` 从 `NEPTUNE SHIPPING LIMITED` 换成
 `ALL AMERICA FORWARDING, INC.`，ZIM 发票的结论立刻从"转人工"变成 `AP` 且命中台账。
 
-### 4.4 匹配：4 级规则 + 金额判别 + 冲突上报
+### 4.5 匹配：4 级规则 + 金额判别 + 冲突上报
 
 | 优先级 | 规则 | 典型场景 |
 |---|---|---|
@@ -149,7 +189,7 @@ RawDocument ─────┤                                          ├─�
 同一规则命中多行时按**金额距离**选最接近的一条（这正是"一张单里两条同名 Handling Charge"的正确解法），
 并把"候选数 / 差额 / 币种冲突"写进审计链。
 
-### 4.5 增量更新：区分「覆盖」与「补全」
+### 4.6 增量更新：区分「覆盖」与「补全」
 
 题目要求"只修改输入材料明确要求变更的字段"。工程上必须再分一层：
 
@@ -158,7 +198,7 @@ RawDocument ─────┤                                          ├─�
 
 否则要么"每份对账单都被判成 UPDATE"（噪声），要么"空字段永远补不上"（数据烂掉）。
 
-### 4.6 校验与置信度：不达阈值不自动入账
+### 4.7 校验与置信度：不达阈值不自动入账
 
 | 校验 | 处理 |
 |---|---|
@@ -174,7 +214,7 @@ RawDocument ─────┤                                          ├─�
 置信度是**可解释的加权和**（明细 0.35 + 类型 0.15 + 方向 0.15 + 编号 0.10 + 双方 0.10 + 匹配 0.15 − 问题惩罚），
 不是模型随口给的分。
 
-### 4.7 不虚构：缺失就是 null
+### 4.8 不虚构：缺失就是 null
 
 * 字段抽不到 → `null`（例如 `PDF 示例账单2.pdf` 的接收方，文本层确实没有，就留空并告警）；
 * 只有 `$`/`¥` 符号时按符号映射币种，**不猜**具体银行/账户；
@@ -223,10 +263,18 @@ python -m shipping_billing run --inputs data/samples/图片示例.png \
 export LLM_ENABLED=true LLM_API_KEY=sk-xxx LLM_MODEL=deepseek-chat
 python -m shipping_billing run --inputs data/samples --llm
 
+# 命脉模式（v2 CLI 缺省）：综合 agent 必须有 key，无 key 明确报错（退出码 2）
+# 显式回退确定性链（兼容模式）：
+AGENT_REQUIRED_KEY=false python -m shipping_billing run --inputs data/samples
+
+# 真模型端到端测试（联网，默认离线套件不跑；无 key 优雅 skip）
+# 先设 LLM_API_KEY（可选 LLM_BASE_URL / LLM_MODEL），OCR 走缓存回放
+python -m pytest tests/test_e2e_real_agent.py -m e2e
+
 # 把更新写回台账
 python -m shipping_billing run --inputs data/samples --write-ledger
 
-# 测试
+# 测试（默认离线套件：126 个，不含真模型 e2e）
 python -m pytest tests -q
 ```
 
@@ -269,14 +317,18 @@ python -m pytest tests -q
 * **扫描件质量决定 OCR 上限**：低分辨率（<900px 宽）会告警，但仍可能错；系统用"算术自洽 + 校验位 + 低置信度"兜底，而不是盲目入账。
 * **PDF 文本层是"视觉乱序"的**：复杂多栏票据的字段位置会串行，`PDF示例账单1.pdf` 的单据日期因此抽不到（输出 `null` + info 提示），这是"不虚构"的必然代价。
 * **`.doc` 老格式**：优先用 LibreOffice 转换；没有则退化为二进制文本提取，表格边界会丢失（已告警）。
-* **LLM 通道默认关闭**：没有 API Key 时系统仍然完整可用；开启后也只做"补位 + 交叉校验"，不接管金额判定。
+* **命脉模式需配 key**：`run`/`demo` 缺省要求 `LLM_API_KEY`（综合 agent 是命脉，
+  无 key 明确报错、不静默降级）；`eval` 回归闸门钉住离线确定性，无 key 可复现；
+  `AGENT_REQUIRED_KEY=false` 显式回退确定性链。第 2 段 LLM 草稿仍可选，读失败留空不阻断。
 * **台账是示例文件**，真实接入需对接财务系统（接口层已抽象为 `matching/ledger.py`）。
 
 ---
 
 ## 9. 文档
 
-* [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) —— 架构与数据流、关键决策与取舍
+* [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) —— v2 四段式架构与数据流、关键决策与取舍
+* [`docs/adr/0001-v2-comprehensive-agent-deterministic-tail.md`](docs/adr/0001-v2-comprehensive-agent-deterministic-tail.md) —— 架构决策记录（综合 agent + 死规则尾巴）
+* [`GLOSSARY.md`](GLOSSARY.md) —— 领域词汇（草稿/综合 agent/提案/死规则尾巴/认亲…）
 * [`docs/HARNESS.md`](docs/HARNESS.md) —— Harness 工程化设计（验收第 8 条）
 * [`docs/DESIGN_THINKING.md`](docs/DESIGN_THINKING.md) —— 10 点思考（验收第 9 条）
 * [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md) —— 验收标准逐条对照

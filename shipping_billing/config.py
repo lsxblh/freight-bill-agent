@@ -102,6 +102,14 @@ class Settings:
     judge_enabled: bool = False
     judge_model: str = ""
 
+    # ---------- 综合 agent 命脉模式（票06） ----------
+    #: 必需 key 开关（规格 Q5）：True=综合 agent 必须可用——无 key 且无
+    #: 注入时构造即报错，有 key 则默认启用 ChatAgentLlm；False=兼容模式，
+    #: agent_llm 缺省 None 走确定性链（票04 行为）。
+    #: 缺省值分两层（拍板 Q1=A）：数据类缺省 False（程序化构造/离线测试
+    #: 不受影响）；from_env（CLI/生产入口）缺省 True，体现命脉定位。
+    agent_required_key: bool = False
+
     # ---------- 业务 ----------
     #: 当前记账主体（我司）。AR/AP 判定必须以它为中心。
     accounting_entity: str = "NEPTUNE SHIPPING LIMITED"
@@ -169,6 +177,7 @@ class Settings:
             ingest_max_retries=_env_int("INGEST_MAX_RETRIES", 2),
             judge_enabled=_env_bool("JUDGE_ENABLED", bool(_env("JUDGE_MODEL"))),
             judge_model=_env("JUDGE_MODEL", "") or "",
+            agent_required_key=_env_bool("AGENT_REQUIRED_KEY", True),
             accounting_entity=_env(
                 "ACCOUNTING_ENTITY", "NEPTUNE SHIPPING LIMITED"
             )
